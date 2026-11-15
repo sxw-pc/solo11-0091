@@ -1,0 +1,67 @@
+{% extends "base.html" %}
+{% block title %}运行列表 · 择约回归台{% endblock %}
+{% block content %}
+<section class="hero">
+  <div>
+    <p class="eyebrow">READ-ONLY REGRESSION CONSOLE</p>
+    <h1>选择器契约运行台账</h1>
+    <p class="muted">浏览历史运行、字段命中质量、失效归因与基线差异。所有数据来自本地 SQLite。</p>
+  </div>
+  {% if latest %}
+  <div class="hero-card">
+    <span class="muted">最近运行</span>
+    <strong>{{ latest.run_id }}</strong>
+    <span class="status status-{{ latest.status }}">{{ latest.status }}</span>
+    <a href="{{ url_for('run_detail', run_id=latest.run_id) }}">查看详情 →</a>
+  </div>
+  {% endif %}
+</section>
+
+<section class="panel">
+  <div class="panel-head">
+    <h2>运行列表</h2>
+    <form class="filters" method="get" action="{{ url_for('index') }}">
+      <label>站点
+        <input name="site" value="{{ filter_site }}" placeholder="site-a.invalid">
+      </label>
+      <label>结论
+        <select name="status">
+          <option value="">全部</option>
+          {% for value in ['pass', 'warn', 'fail'] %}
+          <option value="{{ value }}" {% if filter_status == value %}selected{% endif %}>{{ value }}</option>
+          {% endfor %}
+        </select>
+      </label>
+      <button type="submit">筛选</button>
+    </form>
+  </div>
+  {% if runs %}
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>运行 ID</th><th>结论</th><th>生成时间</th><th>配方</th>
+          <th>快照</th><th>字段结果</th><th>发现</th><th>基线差异</th>
+        </tr>
+      </thead>
+      <tbody>
+      {% for run in runs %}
+        <tr>
+          <td><a class="mono" href="{{ url_for('run_detail', run_id=run.run_id) }}">{{ run.run_id }}</a></td>
+          <td><span class="status status-{{ run.status }}">{{ run.status }}</span></td>
+          <td class="mono">{{ run.generated_at }}</td>
+          <td>{{ run.recipe_count }}</td>
+          <td>{{ run.snapshot_count }}</td>
+          <td>{{ run.field_result_count }}</td>
+          <td>{{ run.finding_count }}</td>
+          <td>{{ run.baseline_diff_count }}</td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <p class="empty">没有符合条件的运行。请先执行 <code>python -m selregress demo</code>。</p>
+  {% endif %}
+</section>
+{% endblock %}
