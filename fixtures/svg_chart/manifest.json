@@ -1,0 +1,1 @@
+{"snapshot":"fixtures/svg_chart/chart.html","chart_selector":"svg.price-chart","series_selector":"polyline.price-series","machine_data_selector":"script#machine-series","drop_alert_threshold":"0.12","contracts":["rendered_authority","embedded_data_authority"]}

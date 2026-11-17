@@ -1,0 +1,9 @@
+{
+  "snapshot": "fixtures/table_contract/offer-grid.html",
+  "table_selector": "table.offer-grid",
+  "group_selector": "th.group",
+  "item_selector": "td.item",
+  "amount_selector": "td.amount",
+  "contracts": ["carry_rowspan", "explicit_only"],
+  "expected_top_level_rows": 4
+}

@@ -1,0 +1,49 @@
+schema_version: 1
+name: site_a_detail
+site: site-a.invalid
+page_type: detail
+description: 示例甲单位详情页字段契约
+baseline: configs/baselines/site_a_detail.baseline.json
+fields:
+  - name: name
+    selector: h1.product-name
+    type: string
+    required: true
+  - name: sku
+    selector: .sku
+    type: string
+    required: true
+    on_change: warn
+  - name: price
+    selector: .price
+    type: decimal
+    required: false
+    normalize:
+      - trim
+      - strip_thousands
+  - name: updated_at
+    selector: .updated
+    type: date
+    required: false
+    normalize:
+      - trim
+  - name: stock
+    selector: .stock
+    type: integer
+    required: false
+  - name: in_stock
+    selector: .in-stock
+    type: boolean
+    required: false
+  - name: description
+    selector: .desc
+    extract: html
+    type: string
+    required: false
+    normalize:
+      - trim
+  - name: doc_url
+    selector: a.docs
+    extract: href
+    type: url
+    required: false

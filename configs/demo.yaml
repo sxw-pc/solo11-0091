@@ -1,0 +1,26 @@
+schema_version: 1
+name: demo
+description: 离线演示配置，全部输入来自仓库内 fixture
+snapshot_dir: fixtures/snapshots
+recipes:
+  - configs/recipes/site_a_list.yaml
+  - configs/recipes/site_a_detail.yaml
+  - configs/recipes/site_b_detail.yaml
+ledger_path: var/selregress.db
+runs_dir: runs
+fixed_time: "2024-03-01T00:00:00Z"
+rules:
+  default_on_change: warn
+  no_match: warn
+  multi_match: warn
+  type_error: warn
+  ambiguous_selector: warn
+  version_drift: warn
+  empty_value: warn
+  added_field: warn
+  missing_field: warn
+  match_count_change: warn
+  type_status_change: warn
+  stability_change: warn
+  stability_drop_threshold: 10
+  required_failure: fail
