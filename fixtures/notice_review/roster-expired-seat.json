@@ -1,0 +1,17 @@
+{
+  "schema_version": 1,
+  "notices": [
+    {"notice_id": "N-001", "required_skill": "office", "designated_reviewer": "X"},
+    {"notice_id": "N-002", "required_skill": "maintenance", "designated_reviewer": "X"}
+  ],
+  "reviewers": [
+    {"reviewer_id": "X", "skills": ["office", "maintenance"], "budget_limit": "5000",
+     "seats": [{"date": "2025-06-09", "count": 1}]},
+    {"reviewer_id": "Y", "skills": ["office"], "budget_limit": "1500",
+     "seats": [{"date": "2025-06-10", "count": 1}]}
+  ],
+  "delegations": [
+    {"notice_id": "N-001", "from": "X", "to": "Y",
+     "detail_sha256": "6978c6c9406bf3bcd2e9eb73092d680646938bf503d853a51d7bb359300ac12f"}
+  ]
+}

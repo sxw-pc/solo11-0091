@@ -44,6 +44,11 @@ def build_parser() -> argparse.ArgumentParser:
     ledger.add_argument("--db", default=None)
     notice = sub.add_parser("notice-intake", help="核对本地公告列表与详情材料")
     notice.add_argument("--manifest", required=True, help="本地公告材料清单")
+    review = sub.add_parser("notice-review", help="规划公告截止前的复核席位行动")
+    review.add_argument("--manifest", required=True, help="本地公告材料清单")
+    review.add_argument("--roster", required=True, help="本地复核清单（技能/预算权限/席位/转派授权）")
+    review.add_argument("--contract", required=True, choices=["designated_only", "delegation_allowed"],
+                        help="复核合同：designated_only 仅限原指定人；delegation_allowed 允许有效转派")
     return parser
 
 
@@ -110,6 +115,14 @@ def _notice_intake_command(args: argparse.Namespace) -> int:
     return 0 if result["status"] == "ready" else 2
 
 
+def _notice_review_command(args: argparse.Namespace) -> int:
+    from .notice_intake import plan_review_actions
+
+    result = plan_review_actions(args.manifest, args.roster, contract=args.contract)
+    _print_json(result)
+    return 0 if result["status"] == "ready" else 2
+
+
 def main(argv: Sequence[str] | None = None) -> int:
     try:
         args = build_parser().parse_args(argv)
@@ -121,6 +134,8 @@ def main(argv: Sequence[str] | None = None) -> int:
             return _ledger_command(args)
         if args.command == "notice-intake":
             return _notice_intake_command(args)
+        if args.command == "notice-review":
+            return _notice_review_command(args)
         raise InputError("CLI_ARGUMENT", f"未知命令: {args.command}")
     except InputError as exc:
         sys.stderr.write(stable_json_text({"error": exc.code, "message": exc.message, "details": exc.details}))

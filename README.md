@@ -54,6 +54,17 @@ pytest -q
 
 本地公告清单可用 `python -m selregress notice-intake --manifest fixtures/notice_intake/manifest-ready.json` 核对。它从已归档的公告列表卡片与显式声明的详情快照读取标题、链接、预算和截止日，使用既有选择器匹配与字段转换，输出每条公告的来源摘要及列表/详情一致性；`manifest-conflict.json` 演示预算不一致时返回 blocked。此命令只读本地材料，不发送投标或网络请求。
 
+在材料一致性之上，`notice-review` 进一步规划“已核对公告能否在截止前获得有效复核席位”：
+
+```bash
+python -m selregress notice-review --manifest fixtures/notice_review/manifest.json \
+  --roster fixtures/notice_review/roster.json --contract designated_only   # 仅原指定人：1 条可行动，退出码 2
+python -m selregress notice-review --manifest fixtures/notice_review/manifest.json \
+  --roster fixtures/notice_review/roster.json --contract delegation_allowed # 允许有效转派：2 条可行动，退出码 0
+```
+
+复核清单（`fixtures/notice_review/roster.json`）声明每条公告所需技能与原指定复核员、每名复核员的技能/预算权限/按日席位，以及绑定具体公告详情 SHA 的转派授权；可转派性只来自显式委托，不能从姓名、预算数值相近或布尔字段推断。规划先最大化截止前完成的公告数，同数时按较早截止与稳定 notice_id 优先，再最小化转派次数；席位日期须早于公告截止日。`designated_only` 合同只允许原指定人，`delegation_allowed` 合同另允许技能、预算权限、截止前席位与绑定当前详情 SHA 的委托全部有效的转派。公告的预算、截止日、详情 SHA 或材料一致性一旦变化，可行边与联合规划结果随之重算；mismatch 或缺详情的公告不进入席位分配，但保留来源路径、预算/截止、详情 SHA、授权与席位占用证据。阻断原因稳定为 `mismatch` / `missing_detail` / `skill_missing` / `budget_over_authority` / `seat_contended` / `seat_expired` / `seat_unavailable` / `delegation_stale_sha` / `roster_entry_missing`。全部公告可行动时退出码为 0，否则为 2；同输入重复运行输出字节稳定。
+
 `demo` 使用仓库自带 fixture，固定时间 `2024-03-01T00:00:00Z`，因此报告内容可复现。演示数据刻意包含选择器失效、多匹配、类型失败、跨版本漂移与基线变化，因此运行结论为 `warn`，CLI 退出码为 **2**；`make demo` 接受这一预期告警并返回成功。要验证失败分支，可修改临时配置或将 `--fail-on-warn` 打开。
 
 安装依赖（离线环境使用本地 wheel 源）：
