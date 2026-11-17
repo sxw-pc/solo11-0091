@@ -1,0 +1,57 @@
+{
+  "schema_version": 1,
+  "site": "site-a.invalid",
+  "page_type": "detail",
+  "version": "2024-01",
+  "generated_at": "2024-02-01T00:00:00Z",
+  "fields": {
+    "description": {
+      "conversion_status": "ok",
+      "match_count": 1,
+      "normalized_value": "<p>示例描述 <strong>甲</strong>。</p>",
+      "score": 100
+    },
+    "doc_url": {
+      "conversion_status": "ok",
+      "match_count": 1,
+      "normalized_value": "/docs/a-001",
+      "score": 100
+    },
+    "in_stock": {
+      "conversion_status": "ok",
+      "match_count": 1,
+      "normalized_value": "true",
+      "score": 100
+    },
+    "name": {
+      "conversion_status": "ok",
+      "match_count": 1,
+      "normalized_value": "示例甲型号 A",
+      "score": 100
+    },
+    "price": {
+      "conversion_status": "ok",
+      "match_count": 1,
+      "normalized_value": "1280",
+      "score": 100
+    },
+    "sku": {
+      "conversion_status": "ok",
+      "match_count": 1,
+      "normalized_value": "SKU-A-001",
+      "score": 100
+    },
+    "stock": {
+      "conversion_status": "ok",
+      "match_count": 1,
+      "normalized_value": "12",
+      "score": 100
+    },
+    "updated_at": {
+      "conversion_status": "ok",
+      "match_count": 1,
+      "normalized_value": "2024-01-05",
+      "score": 100
+    }
+  }
+}

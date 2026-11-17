@@ -1,0 +1,34 @@
+schema_version: 1
+name: site_b_detail
+site: site-b.invalid
+page_type: detail
+description: 示例乙机构详情页字段契约与候选选择器
+fields:
+  - name: title
+    selectors:
+      - h1.title
+      - .headline
+    type: string
+    required: true
+  - name: brand
+    selector: .brand
+    type: string
+    required: true
+  - name: product_code
+    selector: .product-code
+    type: string
+    required: false
+  - name: price
+    selector: .price
+    type: decimal
+    required: false
+    normalize:
+      - trim
+      - strip_thousands
+  - name: summary
+    selector: .summary
+    type: string
+    required: false
+    normalize:
+      - trim
+      - collapse_ws
