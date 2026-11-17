@@ -1,4 +1,4 @@
-"""命令行入口：demo / run / serve / ledger。"""
+"""命令行入口：demo / run / serve / ledger / plan-selector-repair。"""
 
 from __future__ import annotations
 
@@ -7,8 +7,10 @@ import sys
 from pathlib import Path
 from typing import Sequence
 
-from .config import load_config
+from .config import load_config, load_config_for_planning
 from .ledger import Ledger
+from .repair import SCOPES, plan_selector_repair
+from .reporting import repair_plan_summary
 from .runner import execute
 from .util import InputError, SelregressError, stable_json_text
 
@@ -42,6 +44,22 @@ def build_parser() -> argparse.ArgumentParser:
     ledger.add_argument("--latest", action="store_true", help="输出最近一次运行摘要")
     ledger.add_argument("--config", default=DEFAULT_CONFIG)
     ledger.add_argument("--db", default=None)
+    plan = sub.add_parser(
+        "plan-selector-repair",
+        help="只读选择器修复预演：真实重跑候选动作，不写回 YAML",
+    )
+    plan.add_argument("--config", default=DEFAULT_CONFIG, help="YAML 配置路径")
+    plan.add_argument("--recipe", required=True, help="目标配方名")
+    plan.add_argument(
+        "--field",
+        action="append",
+        required=True,
+        help="目标字段，可重复或使用逗号分隔",
+    )
+    plan.add_argument("--scope", choices=SCOPES, required=True, help="授权范围")
+    plan.add_argument("--fixed-time", default=None, help="固定 UTC 时间，便于复现")
+    plan.add_argument("--db", default=None, help="覆盖 SQLite 台账路径")
+    plan.add_argument("--out-dir", default=None, help="覆盖 runs 输出目录")
     return parser
 
 
@@ -100,6 +118,27 @@ def _ledger_command(args: argparse.Namespace) -> int:
     return 0
 
 
+def _plan_command(args: argparse.Namespace) -> int:
+    config = load_config_for_planning(args.config)
+    plan = plan_selector_repair(
+        config,
+        recipe_name=args.recipe,
+        fields=args.field,
+        scope=args.scope,
+        fixed_time=args.fixed_time,
+        ledger_path=Path(args.db) if args.db else None,
+        runs_dir=Path(args.out_dir) if args.out_dir else None,
+    )
+    _print_json(
+        {
+            "command": "plan-selector-repair",
+            "summary": repair_plan_summary(plan),
+            "plan": plan,
+        }
+    )
+    return 0 if plan.get("feasible") else 2
+
+
 def main(argv: Sequence[str] | None = None) -> int:
     try:
         args = build_parser().parse_args(argv)
@@ -109,6 +148,8 @@ def main(argv: Sequence[str] | None = None) -> int:
             return _serve_command(args)
         if args.command == "ledger":
             return _ledger_command(args)
+        if args.command == "plan-selector-repair":
+            return _plan_command(args)
         raise InputError("CLI_ARGUMENT", f"未知命令: {args.command}")
     except InputError as exc:
         sys.stderr.write(stable_json_text({"error": exc.code, "message": exc.message, "details": exc.details}))

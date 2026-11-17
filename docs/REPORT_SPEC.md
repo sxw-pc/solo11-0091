@@ -151,7 +151,22 @@ SQLite 表包括 `run`、`recipe`、`snapshot`、`field_result`、`finding`、`b
 
 | 退出码 | 条件 |
 | ---: | --- |
-| 0 | `pass` |
-| 2 | `warn` 且未启用 `--fail-on-warn` |
+| 0 | `pass`；或修复预演找到可行方案 |
+| 2 | `warn` 且未启用 `--fail-on-warn`；或修复预演无可行方案 |
 | 1 | `fail`，或 `warn` + `--fail-on-warn` |
 | 3 | 配置、路径、配方、基线或输入错误 |
+
+## 9. 选择器修复预演计划
+
+`plan-selector-repair` 输出 JSON，顶层包含：
+
+- `summary`：计划 ID、范围、目标/失败字段、是否可行、替换主选择器是否可交付、
+  推荐方案摘要、冲突数量、报告文件路径；
+- `plan`：完整反事实预演，包括 `scope_semantics`、`base_run`、`field_actions`
+  （每个字段的替换/追加/放弃动作与真实重跑结果）、`evaluations`（整计划组合
+  对照）、`recommended`、`conflicts` 与 `affected_snapshots`。
+
+计划摘要与完整计划同时写入 `runs/<base_run_id>/selector-repair-<plan_id>.json`
+和 `.md`，并写入 SQLite `repair_plan` / `repair_action`。候选建议的
+`score`/`confidence` 只作线索；是否可交付由真实抽取、基线、跨版本与未列目标
+字段一致性共同决定。

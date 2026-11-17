@@ -156,3 +156,23 @@ def load_config(path: str | Path, root: Path = PROJECT_ROOT) -> AppConfig:
         rules=_validate_rules(data.get("rules")),
         description=str(data.get("description", "")),
     )
+
+
+def load_config_for_planning(path: str | Path) -> AppConfig:
+    """加载修复预演配置，允许使用项目根目录之外的隔离 fixture。
+
+    常规 `run`/`demo` 仍要求输入位于项目根目录内。修复预演经常针对临时合成配方
+    与快照运行，因此当配置文件不在项目根目录内时，将配置所在目录视为该次预演的
+    根目录；配置内声明的快照、配方、基线与台账路径都必须位于该目录内。这样既不
+    放宽常规命令的边界，也能让临时目录中的 fixture 完全隔离运行。
+    """
+
+    candidate = Path(path)
+    resolved = candidate.resolve() if candidate.is_absolute() else (Path.cwd() / candidate).resolve()
+    project_root = PROJECT_ROOT.resolve()
+    try:
+        resolved.relative_to(project_root)
+        root = project_root
+    except ValueError:
+        root = resolved.parent
+    return load_config(resolved, root)

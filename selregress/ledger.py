@@ -9,11 +9,15 @@ from typing import Any
 from .ledger_query import LedgerQuery
 from .ledger_schema import SCHEMA_STATEMENTS
 from .models import RunResult
-from .util import InputError
+from .util import InputError, sha256_text
 
 
 def _json(value: Any) -> str:
     return json.dumps(value, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
+
+
+def _sha256(value: str) -> str:
+    return sha256_text(value)
 
 
 class Ledger(LedgerQuery):
@@ -135,5 +139,69 @@ class Ledger(LedgerQuery):
             return run_pk
         except sqlite3.IntegrityError as exc:
             raise InputError("LEDGER_WRITE_CONFLICT", f"台账写入冲突: {exc}") from exc
+        finally:
+            conn.close()
+
+    def record_repair_plan(self, plan: dict) -> int:
+        """记录一次只读修复预演。旧运行由 `record_run` 单独记录，二者通过 run_id 关联。"""
+
+        plan_json = _json(plan)
+        recommended = plan.get("recommended")
+        conn = self._write_connect()
+        try:
+            with conn:
+                cursor = conn.execute(
+                    """
+                    INSERT INTO repair_plan (
+                        plan_id, base_run_id, recipe_name, scope,
+                        target_fields_json, failing_fields_json, feasible,
+                        replace_deliverable, recommended_json, conflicts_json,
+                        plan_json, plan_sha256, created_at
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    """,
+                    (
+                        str(plan.get("plan_id", "")),
+                        str((plan.get("base_run") or {}).get("run_id", "")),
+                        str((plan.get("recipe") or {}).get("name", "")),
+                        str(plan.get("scope", "")),
+                        _json(plan.get("requested_fields", [])),
+                        _json(plan.get("failing_fields", [])),
+                        int(bool(plan.get("feasible", False))),
+                        int(bool(plan.get("replace_deliverable", False))),
+                        _json(recommended),
+                        _json(plan.get("conflicts", [])),
+                        plan_json,
+                        _sha256(plan_json),
+                        str(plan.get("generated_at", "")),
+                    ),
+                )
+                plan_pk = int(cursor.lastrowid)
+                for item in plan.get("field_actions", []):
+                    selectors = _json(item.get("selectors", []))
+                    conn.execute(
+                        """
+                        INSERT INTO repair_action (
+                            plan_pk, field_name, action, selectors_json,
+                            added_selectors_json, candidate_selector,
+                            target_scope_met, feasible_for_field,
+                            conflicts_json, preview_json
+                        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                        """,
+                        (
+                            plan_pk,
+                            str(item.get("field_name", "")),
+                            str(item.get("action", "")),
+                            selectors,
+                            _json(item.get("added_selectors", [])),
+                            item.get("candidate_selector"),
+                            int(bool(item.get("target_scope_met", False))),
+                            int(bool(item.get("feasible_for_field", False))),
+                            _json(item.get("conflicts", [])),
+                            _json(item),
+                        ),
+                    )
+            return plan_pk
+        except sqlite3.IntegrityError as exc:
+            raise InputError("LEDGER_WRITE_CONFLICT", f"计划写入冲突: {exc}") from exc
         finally:
             conn.close()

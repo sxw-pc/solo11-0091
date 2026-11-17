@@ -183,3 +183,19 @@ def extract_field(selection: NodeSelection, spec: FieldSpec) -> Extraction:
         ambiguity_detail=selection.ambiguity_detail,
         error=error,
     )
+
+
+def extraction_failure_kind(extraction: Extraction) -> str | None:
+    """把抽取结果归类为稳定的失败类型，供诊断与修复预演共用。
+
+    只看 `extract_field` 的真实结果，不接受候选建议分数之类的旁证。
+    `ambiguous_selector` 由匹配层给出，不在此处归类。
+    """
+
+    if extraction.match_count == 0 or extraction.conversion_status == "no_match":
+        return "no_match"
+    if extraction.conversion_status == "empty":
+        return "empty_value"
+    if extraction.conversion_status == "type_error":
+        return "type_error"
+    return None

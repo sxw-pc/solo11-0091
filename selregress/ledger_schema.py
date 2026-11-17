@@ -108,6 +108,41 @@ SCHEMA_STATEMENTS = [
         snapshot_path TEXT NOT NULL
     )
     """,
+    """
+    CREATE TABLE IF NOT EXISTS repair_plan (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        plan_id TEXT NOT NULL,
+        base_run_id TEXT NOT NULL,
+        recipe_name TEXT NOT NULL,
+        scope TEXT NOT NULL,
+        target_fields_json TEXT NOT NULL,
+        failing_fields_json TEXT NOT NULL,
+        feasible INTEGER NOT NULL,
+        replace_deliverable INTEGER NOT NULL,
+        recommended_json TEXT NOT NULL,
+        conflicts_json TEXT NOT NULL,
+        plan_json TEXT NOT NULL,
+        plan_sha256 TEXT NOT NULL,
+        created_at TEXT NOT NULL,
+        UNIQUE(plan_id, base_run_id)
+    )
+    """,
+    """
+    CREATE TABLE IF NOT EXISTS repair_action (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        plan_pk INTEGER NOT NULL REFERENCES repair_plan(id),
+        field_name TEXT NOT NULL,
+        action TEXT NOT NULL,
+        selectors_json TEXT NOT NULL,
+        added_selectors_json TEXT NOT NULL,
+        candidate_selector TEXT,
+        target_scope_met INTEGER NOT NULL,
+        feasible_for_field INTEGER NOT NULL,
+        conflicts_json TEXT NOT NULL,
+        preview_json TEXT NOT NULL,
+        UNIQUE(plan_pk, field_name, action, selectors_json)
+    )
+    """,
     "CREATE INDEX IF NOT EXISTS idx_field_run ON field_result(run_pk)",
     "CREATE INDEX IF NOT EXISTS idx_field_filter ON field_result(run_pk, site, page_type, field_name)",
     "CREATE INDEX IF NOT EXISTS idx_field_status ON field_result(run_pk, status)",
@@ -116,4 +151,6 @@ SCHEMA_STATEMENTS = [
     "CREATE INDEX IF NOT EXISTS idx_diff_run ON baseline_diff(run_pk)",
     "CREATE INDEX IF NOT EXISTS idx_snapshot_run ON snapshot(run_pk)",
     "CREATE INDEX IF NOT EXISTS idx_run_status ON run(status, generated_at)",
+    "CREATE INDEX IF NOT EXISTS idx_repair_plan_id ON repair_plan(plan_id)",
+    "CREATE INDEX IF NOT EXISTS idx_repair_action_plan ON repair_action(plan_pk)",
 ]

@@ -34,7 +34,12 @@ class InputError(SelregressError):
 def resolve_under_root(raw: str | Path, root: Path, label: str = "path") -> Path:
     """解析路径并拒绝逃出项目根目录的输入。"""
     root = root.resolve()
-    candidate = Path(raw)
+    text = str(raw)
+    # 在 POSIX 上 Path 不会把 "C:/..." 当作绝对路径；显式识别 Windows 盘符，
+    # 避免把外部绝对路径误当成项目内相对路径。
+    if os.name != "nt" and re.match(r"^[A-Za-z]:[\\/]", text):
+        raise InputError("PATH_OUTSIDE_ROOT", f"{label} 超出项目根目录: {raw}")
+    candidate = Path(text)
     if not candidate.is_absolute():
         candidate = root / candidate
     resolved = candidate.resolve()

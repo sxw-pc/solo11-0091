@@ -198,3 +198,90 @@ def analyze_failure(
         item.pop("evidence", None)
     evidence["advice"] = "建议由维护人员核对 DOM 后更新配方；本工具不会改写文件。"
     return evidence, suggestions
+
+
+def _candidate_entry(
+    *,
+    selector: str,
+    score: int,
+    source: str,
+    reason: str,
+    evidence: dict[str, Any] | None = None,
+    derived_from: str | None = None,
+) -> dict[str, Any]:
+    entry: dict[str, Any] = {
+        "selector": selector,
+        "confidence": _confidence(score),
+        "score": score,
+        "source": source,
+        "reason": reason,
+        "risk": RISK,
+    }
+    if evidence:
+        entry["evidence"] = evidence
+    if derived_from:
+        entry["derived_from"] = derived_from
+    return entry
+
+
+def enumerate_repair_candidates(
+    soup: Any,
+    spec: FieldSpec,
+    selection: NodeSelection,
+    *,
+    limit: int = 12,
+) -> list[dict[str, Any]]:
+    """枚举可供修复预演真实重跑的候选选择器。
+
+    与 `analyze_failure` 一样只读、确定性，但返回可供 matcher/extractor 重跑的
+    选择器，而不是只给出置信度。这里仍然是“候选线索”：是否真正可交付必须由
+    调用方在全部目标快照上重新抽取后判定，不能直接采信 score/confidence。
+
+    来源包括：
+    - 类名相似节点（同时给出 `tag.class` 与更通用的 `.class` 形式）；
+    - 多命中节点收窄后的唯一 DOM 路径。
+    """
+
+    found: dict[str, dict[str, Any]] = {}
+
+    def add(entry: dict[str, Any]) -> None:
+        selector = str(entry.get("selector", "")).strip()
+        if not selector:
+            return
+        entry = dict(entry)
+        entry["selector"] = selector
+        existing = found.get(selector)
+        if existing is None or (
+            entry["score"], entry.get("source", "")
+        ) > (existing["score"], existing.get("source", "")):
+            found[selector] = entry
+
+    for item in _class_suggestions(soup, spec):
+        add(item)
+        for class_name in CLASS_RE.findall(item["selector"]):
+            add(
+                _candidate_entry(
+                    selector=f".{class_name}",
+                    score=int(item["score"]),
+                    source="class_similarity",
+                    reason=f"由相似类名候选 {item['selector']} 派生的类选择器",
+                    evidence=item.get("evidence"),
+                    derived_from=item["selector"],
+                )
+            )
+    if selection.count > 1:
+        for item in _multi_suggestions(soup, selection):
+            add(
+                _candidate_entry(
+                    selector=item["selector"],
+                    score=int(item["score"]),
+                    source="dom_path",
+                    reason=str(item.get("reason", "唯一 DOM 路径候选")),
+                    evidence=item.get("evidence"),
+                )
+            )
+    ordered = sorted(
+        found.values(),
+        key=lambda entry: (-int(entry["score"]), entry["selector"], entry.get("source", "")),
+    )
+    return ordered[: max(1, int(limit))]

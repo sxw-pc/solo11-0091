@@ -24,6 +24,7 @@ class Execution:
     result: RunResult
     artifacts: dict[str, Any]
     warnings: list[str] = field(default_factory=list)
+    bundle: InputBundle | None = None
 
 
 def _fingerprint(
@@ -119,7 +120,9 @@ def execute(
     )
     artifacts = write_reports(result, runs_dir or config.runs_dir, config.root)
     ledger.record_run(result, result.report_dir, result.report_hashes)
-    return Execution(result=result, artifacts=artifacts, warnings=bundle.warnings)
+    return Execution(
+        result=result, artifacts=artifacts, warnings=bundle.warnings, bundle=bundle
+    )
 
 
 def execution_summary(execution: Execution) -> dict[str, Any]:

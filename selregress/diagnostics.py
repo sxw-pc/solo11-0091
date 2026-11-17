@@ -4,9 +4,16 @@ from __future__ import annotations
 
 from typing import Any
 
+from .extractor import extract_field, extraction_failure_kind
+from .matcher import match_nodes
 from .models import Extraction, FieldOutcome, Finding, NodeSelection, Recipe, SnapshotMeta
 from .suggest import analyze_failure
 from .util import clamp_score
+
+# 修复预演使用的“字段是否干净”判定。只认实际抽取结果，不看建议置信分。
+FAILURE_FLAGS = frozenset(
+    {"no_match", "empty_value", "multi_match", "type_error", "ambiguous_selector"}
+)
 
 PENALTIES = {
     "no_match": (-40, -25),
@@ -85,6 +92,7 @@ def diagnose_field(
 ) -> tuple[FieldOutcome, list[Finding]]:
     flags: list[str] = []
     findings: list[Finding] = []
+    failure_kind = extraction_failure_kind(extraction)
     if selection.count == 0:
         flags.append("no_match")
         evidence, suggestions = analyze_failure(soup, spec, selection)
@@ -95,7 +103,7 @@ def diagnose_field(
             recipe=recipe, snapshot=snapshot, field_name=spec.name,
             evidence=evidence, suggestions=suggestions,
         ))
-    elif extraction.conversion_status == "empty":
+    elif failure_kind == "empty_value":
         flags.append("empty_value")
         severity = _severity(rules, "empty_value", spec.required)
         findings.append(_finding(
@@ -192,3 +200,48 @@ def apply_version_drift(recipe: Recipe, outcomes: list[FieldOutcome], rules: dic
                 },
             ))
     return findings
+
+
+def outcome_is_clean(outcome: FieldOutcome) -> bool:
+    """字段在某一快照上是否达到“可交付”的抽取质量。
+
+    仅依据真实抽取结果与诊断标记；候选建议的 confidence/score 不参与判定。
+    `version_drift` 表示跨版本变化，本身不代表该快照抽取失败，故不在此列。
+    """
+
+    return (
+        outcome.extraction.conversion_status == "ok"
+        and not (set(outcome.flags) & FAILURE_FLAGS)
+    )
+
+
+def diagnose_recipe_snapshot(
+    *,
+    recipe: Recipe,
+    snapshot: SnapshotMeta,
+    soup: Any,
+    specs: tuple[Any, ...] | list[Any],
+    rules: dict[str, Any],
+) -> tuple[list[FieldOutcome], list[Finding]]:
+    """对一份快照逐字段执行 match → extract → diagnose。
+
+    修复预演与正式运行共用同一条链路，避免“只在建议层模拟”导致结论失真。
+    """
+
+    outcomes: list[FieldOutcome] = []
+    findings: list[Finding] = []
+    for spec in specs:
+        selection = match_nodes(soup, spec)
+        extraction = extract_field(selection, spec)
+        outcome, field_findings = diagnose_field(
+            recipe=recipe,
+            snapshot=snapshot,
+            spec=spec,
+            selection=selection,
+            extraction=extraction,
+            soup=soup,
+            rules=rules,
+        )
+        outcomes.append(outcome)
+        findings.extend(field_findings)
+    return outcomes, findings

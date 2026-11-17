@@ -200,3 +200,196 @@ def write_reports(run: RunResult, runs_dir: Path, root: Path = PROJECT_ROOT) -> 
         },
         "hashes": hashes,
     }
+
+
+# ---------------------------------------------------------------------------
+# 选择器修复预演报告
+# ---------------------------------------------------------------------------
+
+
+def repair_plan_summary(plan: dict[str, Any]) -> dict[str, Any]:
+    """CLI 与复核使用的计划摘要。候选评分只作为线索展示，不参与可行判定。"""
+
+    recommended = plan.get("recommended")
+    return {
+        "plan_id": plan.get("plan_id", ""),
+        "kind": plan.get("kind", "selregress.selector_repair_plan"),
+        "scope": plan.get("scope"),
+        "scope_semantics": plan.get("scope_semantics", {}),
+        "recipe": plan.get("recipe", {}),
+        "requested_fields": list(plan.get("requested_fields", [])),
+        "failing_fields": list(plan.get("failing_fields", [])),
+        "feasible": bool(plan.get("feasible", recommended is not None)),
+        "replace_deliverable": bool(plan.get("replace_deliverable", False)),
+        "base_run_id": (plan.get("base_run") or {}).get("run_id", ""),
+        "recommended": (
+            {
+                "actions": recommended.get("actions", []),
+                "changed_field_count": recommended.get("changed_field_count", 0),
+                "added_selector_count": recommended.get("added_selector_count", 0),
+                "run_status": recommended.get("run_status"),
+                "summary": recommended.get("summary", {}),
+                "affected_snapshots": recommended.get("affected_snapshots", []),
+            }
+            if recommended is not None
+            else None
+        ),
+        "conflict_count": len(plan.get("conflicts", [])),
+        "artifacts": plan.get("artifacts", {}),
+        "read_only": True,
+    }
+
+
+def _md_cell(value: Any) -> str:
+    text = "" if value is None else str(value)
+    return truncate(text.replace("|", "\\|").replace("\n", " "), 160)
+
+
+def render_repair_plan_markdown(plan: dict[str, Any]) -> str:
+    summary = repair_plan_summary(plan)
+    lines = [
+        "# 择约回归台选择器修复预演计划",
+        "",
+        f"- 计划 ID：`{summary['plan_id']}`",
+        f"- 授权范围：**{summary['scope']}**",
+        f"- 配方：`{summary['recipe'].get('name', '')}`（`{summary['recipe'].get('path', '')}`）",
+        f"- 旧运行：`{summary['base_run_id']}`",
+        f"- 结论：**{'可行' if summary['feasible'] else '无可行方案'}**",
+        f"- 替换主选择器可交付：**{'是' if summary['replace_deliverable'] else '否'}**",
+        f"- 目标字段：{', '.join(summary['requested_fields']) or '-'}",
+        f"- 失败字段：{', '.join(summary['failing_fields']) or '-'}",
+        "",
+        "## 授权范围语义",
+        "",
+        summary["scope_semantics"].get("applied", ""),
+        "",
+        "## 推荐方案",
+        "",
+    ]
+    recommended = summary["recommended"]
+    if recommended is None:
+        lines.append("无可行方案。以下冲突证据用于人工复核。")
+    else:
+        lines += [
+            "| 字段 | 动作 | 选择器 | 新增候选 | 建议分（仅线索） |",
+            "| --- | --- | --- | --- | ---: |",
+        ]
+        for action in recommended["actions"]:
+            lines.append(
+                f"| {_md_cell(action['field_name'])} | {action['action']} "
+                f"| {_md_cell(' → '.join(action['selectors']))} "
+                f"| {_md_cell(', '.join(action['added_selectors']) or '-')} "
+                f"| {action['suggestion']['score']} |"
+            )
+        lines += [
+            "",
+            f"- 改动字段数：{recommended['changed_field_count']}",
+            f"- 新增候选数：{recommended['added_selector_count']}",
+            f"- 预演运行状态：`{recommended['run_status']}`",
+        ]
+        affected = recommended.get("affected_snapshots", [])
+        lines += ["", "### 受影响快照", ""]
+        if affected:
+            for item in affected:
+                lines.append(
+                    f"- `{item['field_name']}` @ {item['version']}："
+                    f"{item['before_conversion_status']} → "
+                    f"{item['after_conversion_status']} / "
+                    f"{', '.join(item['after_flags']) or '-'}"
+                    f"（选择器 `{item['selector']}`）"
+                )
+        else:
+            lines.append("无。")
+    lines += ["", "## 字段级动作预演", ""]
+    if plan.get("field_actions"):
+        lines += [
+            "| 字段 | 动作 | 候选 | 建议分 | 范围达标 | 可交付 | 冲突数 |",
+            "| --- | --- | --- | ---: | --- | --- | ---: |",
+        ]
+        for item in plan["field_actions"]:
+            lines.append(
+                f"| {_md_cell(item['field_name'])} | {item['action']} "
+                f"| {_md_cell(item['candidate_selector'] or '-')} "
+                f"| {item['suggestion']['score']} "
+                f"| {'是' if item['target_scope_met'] else '否'} "
+                f"| {'是' if item['feasible_for_field'] else '否'} "
+                f"| {len(item['conflicts'])} |"
+            )
+    else:
+        lines.append("目标字段在授权范围内均已达标，无需修改。")
+    lines += ["", "## 冲突证据", ""]
+    conflicts = plan.get("conflicts", [])
+    if conflicts:
+        lines += [
+            "| 类型 | 字段 | 版本 | 快照 | 选择器 | 说明 |",
+            "| --- | --- | --- | --- | --- | --- |",
+        ]
+        for item in conflicts:
+            lines.append(
+                f"| {item['kind']} | {_md_cell(item.get('field_name') or '-')} "
+                f"| {_md_cell(item.get('version') or '-')} "
+                f"| {_md_cell(item.get('snapshot_path') or '-')} "
+                f"| {_md_cell(item.get('selector') or '-')} "
+                f"| {_md_cell(item.get('message', ''))} |"
+            )
+    else:
+        lines.append("无。")
+    lines += [
+        "",
+        "## 计划级对照",
+        "",
+    ]
+    evaluations = plan.get("evaluations", [])
+    if evaluations:
+        lines += [
+            "| 字段动作 | 改动字段 | 新增候选 | 可行 | 冲突数 |",
+            "| --- | ---: | ---: | --- | ---: |",
+        ]
+        for item in evaluations[:20]:
+            actions = ", ".join(
+                f"{action['field_name']}:{action['action']}"
+                f"({action['candidate_selector'] or '-'})"
+                for action in item["actions"]
+            )
+            lines.append(
+                f"| {_md_cell(actions or '无改动')} | {item['changed_field_count']} "
+                f"| {item['added_selector_count']} "
+                f"| {'是' if item['feasible'] else '否'} "
+                f"| {len(item['conflicts'])} |"
+            )
+    else:
+        lines.append("无。")
+    lines += [
+        "",
+        "> 本计划仅用于分析本人拥有或已获授权的本地快照材料。"
+        "预演不会写回 YAML，不会修改快照，也不会部署生产选择器；"
+        "候选建议的置信分不能作为修复成功的证据。",
+        "",
+    ]
+    return "\n".join(lines)
+
+
+def write_repair_plan_reports(
+    plan: dict[str, Any], *, base_report_dir: str, root: Path = PROJECT_ROOT
+) -> dict[str, Any]:
+    """把计划写入旧运行报告目录旁的独立文件，并在台账外保留可审核副本。"""
+
+    plan_dir = resolve_under_root(Path(base_report_dir), root, "plan_report_dir")
+    plan_id = plan.get("plan_id", "plan")
+    json_text = stable_json_text(plan)
+    markdown = render_repair_plan_markdown(plan)
+    json_path = plan_dir / f"selector-repair-{plan_id}.json"
+    md_path = plan_dir / f"selector-repair-{plan_id}.md"
+    atomic_write_text(json_path, json_text)
+    atomic_write_text(md_path, markdown)
+    return {
+        "dir": relative_posix(plan_dir, root),
+        "files": {
+            "json": relative_posix(json_path, root),
+            "markdown": relative_posix(md_path, root),
+        },
+        "hashes": {
+            "json": sha256_text(json_text),
+            "md": sha256_text(markdown),
+        },
+    }

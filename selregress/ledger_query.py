@@ -196,10 +196,94 @@ class LedgerQuery:
     def health(self) -> dict[str, Any]:
         conn = self._read_connect()
         try:
+            existing = {
+                row[0]
+                for row in conn.execute(
+                    "SELECT name FROM sqlite_master WHERE type = 'table'"
+                ).fetchall()
+            }
             counts = {}
-            for table in ("run", "recipe", "snapshot", "field_result", "finding", "baseline_diff"):
+            for table in (
+                "run", "recipe", "snapshot", "field_result", "finding",
+                "baseline_diff", "repair_plan", "repair_action",
+            ):
+                if table not in existing:
+                    counts[table] = 0
+                    continue
                 counts[table] = int(conn.execute(f"SELECT COUNT(*) FROM {table}").fetchone()[0])
             return {"status": "ok", "database": self.path.name, "tables": counts}
+        finally:
+            conn.close()
+
+    def list_repair_plans(self, limit: int = 50) -> list[dict[str, Any]]:
+        conn = self._read_connect()
+        try:
+            rows = [
+                dict(row)
+                for row in conn.execute(
+                    "SELECT * FROM repair_plan ORDER BY id DESC LIMIT ?",
+                    (max(1, min(limit, 500)),),
+                ).fetchall()
+            ]
+            for row in rows:
+                row["target_fields"] = _loads(row.pop("target_fields_json"), [])
+                row["failing_fields"] = _loads(row.pop("failing_fields_json"), [])
+                row["recommended"] = _loads(row.pop("recommended_json"), None)
+                row["conflicts"] = _loads(row.pop("conflicts_json"), [])
+                row["feasible"] = bool(row["feasible"])
+                row["replace_deliverable"] = bool(row["replace_deliverable"])
+            return rows
+        finally:
+            conn.close()
+
+    def get_repair_plan(self, plan_id: str, base_run_id: str | None = None) -> dict[str, Any] | None:
+        conn = self._read_connect()
+        try:
+            if base_run_id is None:
+                row = conn.execute(
+                    "SELECT * FROM repair_plan WHERE plan_id = ? ORDER BY id DESC LIMIT 1",
+                    (plan_id,),
+                ).fetchone()
+            else:
+                row = conn.execute(
+                    "SELECT * FROM repair_plan WHERE plan_id = ? AND base_run_id = ? "
+                    "ORDER BY id DESC LIMIT 1",
+                    (plan_id, base_run_id),
+                ).fetchone()
+            if row is None:
+                return None
+            record = dict(row)
+            record["target_fields"] = _loads(record.pop("target_fields_json"), [])
+            record["failing_fields"] = _loads(record.pop("failing_fields_json"), [])
+            record["recommended"] = _loads(record.pop("recommended_json"), None)
+            record["conflicts"] = _loads(record.pop("conflicts_json"), [])
+            record["plan"] = _loads(record.pop("plan_json"), {})
+            record["feasible"] = bool(record["feasible"])
+            record["replace_deliverable"] = bool(record["replace_deliverable"])
+            return record
+        finally:
+            conn.close()
+
+    def query_repair_actions(self, plan_id: str) -> list[dict[str, Any]]:
+        conn = self._read_connect()
+        try:
+            rows = [
+                dict(row)
+                for row in conn.execute(
+                    "SELECT a.* FROM repair_action a "
+                    "JOIN repair_plan p ON p.id = a.plan_pk "
+                    "WHERE p.plan_id = ? ORDER BY a.field_name, a.action, a.selectors_json, a.id",
+                    (plan_id,),
+                ).fetchall()
+            ]
+            for row in rows:
+                row["selectors"] = _loads(row.pop("selectors_json"), [])
+                row["added_selectors"] = _loads(row.pop("added_selectors_json"), [])
+                row["conflicts"] = _loads(row.pop("conflicts_json"), [])
+                row["preview"] = _loads(row.pop("preview_json"), {})
+                row["target_scope_met"] = bool(row["target_scope_met"])
+                row["feasible_for_field"] = bool(row["feasible_for_field"])
+            return rows
         finally:
             conn.close()
 

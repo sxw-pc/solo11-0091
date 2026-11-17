@@ -2,8 +2,9 @@
 
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, Iterable
 
+from .diagnostics import outcome_is_clean
 from .models import BaselineDiff, FieldOutcome, Finding
 
 
@@ -108,3 +109,73 @@ def summarize(
         "min_stability": min(scores) if scores else 100,
     }
     return status, summary
+
+
+def outcome_fingerprint(outcome: FieldOutcome) -> tuple[Any, ...]:
+    """字段结果的可比较指纹，用于验证“未列为目标的字段结果不得改变”。"""
+
+    return (
+        outcome.extraction.normalized_value,
+        tuple(outcome.extraction.normalized_values),
+        tuple(outcome.extraction.raw_values),
+        outcome.extraction.match_count,
+        outcome.extraction.conversion_status,
+        outcome.extraction.used_selector,
+        tuple(sorted(set(outcome.flags))),
+        outcome.score,
+        outcome.status,
+    )
+
+
+def outcomes_equal(left: FieldOutcome, right: FieldOutcome) -> bool:
+    return outcome_fingerprint(left) == outcome_fingerprint(right)
+
+
+def field_scope_clean(
+    outcomes: Iterable[FieldOutcome],
+    *,
+    recipe_name: str,
+    field_name: str,
+    required_snapshots: Iterable[tuple[str, str]],
+) -> tuple[bool, list[dict[str, Any]]]:
+    """按授权范围检查字段在要求快照上的真实抽取是否全部干净。
+
+    `required_snapshots` 为 `(version, snapshot_path)` 集合；current 只传最新版本，
+    replay 传全部归档版本。返回是否全部干净及逐快照证据。
+    """
+
+    by_key = {
+        (item.version, item.snapshot_path): item
+        for item in outcomes
+        if item.recipe_name == recipe_name and item.field_name == field_name
+    }
+    details: list[dict[str, Any]] = []
+    ok = True
+    for version, path in required_snapshots:
+        outcome = by_key.get((version, path))
+        if outcome is None:
+            ok = False
+            details.append(
+                {
+                    "version": version,
+                    "snapshot_path": path,
+                    "ok": False,
+                    "reason": "missing_outcome",
+                    "conversion_status": None,
+                    "flags": [],
+                }
+            )
+            continue
+        clean = outcome_is_clean(outcome)
+        ok = ok and clean
+        details.append(
+            {
+                "version": version,
+                "snapshot_path": path,
+                "ok": clean,
+                "conversion_status": outcome.extraction.conversion_status,
+                "flags": sorted(set(outcome.flags)),
+                "normalized_value": outcome.extraction.normalized_value,
+            }
+        )
+    return ok, details

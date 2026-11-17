@@ -52,6 +52,35 @@ python -m selregress ledger --latest
 pytest -q
 ```
 
+### 只读选择器修复预演
+
+`plan-selector-repair` 在内存中枚举目标字段的候选选择器动作（替换主选择器、追加
+fallback、放弃），对每种动作真实重跑匹配、抽取、诊断、基线比较与回归判定，输出
+可审核的配方修改计划与反事实回归结果。它**不会**写回 YAML，也不会部署生产选择器。
+
+```bash
+python -m selregress plan-selector-repair \
+  --config configs/demo.yaml \
+  --recipe site_b_detail \
+  --field product_code \
+  --scope replay
+```
+
+两种独立授权范围：
+
+| `--scope` | 承诺 |
+| --- | --- |
+| `current` | 只承诺最新快照的抽取；归档版本若受影响会列在 `affected_snapshots`，但不作为交付门槛 |
+| `replay` | 承诺全部归档版本仍可回放；任一归档版本无法命中的方案不可交付 |
+
+因此同一输入在两种范围下可能给出不同裁定：`current` 可以把 `.product-code`
+替换为 `.product-sku`，而 `replay` 必须选择能让两版都命中的 fallback（例如
+`[".product-code", ".product-sku"]`）或报告无可行方案。候选建议的置信分只是
+线索，是否可交付只由真实重跑结果决定。计划、字段级动作与旧运行均写入 SQLite
+（`repair_plan` / `repair_action` 表），原配方与快照保持只读。
+
+退出码：计划可行返回 `0`，无可行方案返回 `2`，输入错误返回 `3`。
+
 `demo` 使用仓库自带 fixture，固定时间 `2024-03-01T00:00:00Z`，因此报告内容可复现。演示数据刻意包含选择器失效、多匹配、类型失败、跨版本漂移与基线变化，因此运行结论为 `warn`，CLI 退出码为 **2**；`make demo` 接受这一预期告警并返回成功。要验证失败分支，可修改临时配置或将 `--fail-on-warn` 打开。
 
 安装依赖（离线环境使用本地 wheel 源）：
@@ -152,7 +181,7 @@ pytest -q
 
 - 仅解析本地静态 HTML，不执行 JavaScript，不处理由前端渲染后才出现的字段；
 - 只做 DOM 与字段契约层诊断，不做页面视觉比对、OCR 或内容语义判断；
-- 候选选择器建议基于类名相似度与 DOM 路径，仅供人工复核，不保证业务语义正确；
+- 候选选择器建议基于类名相似度或 DOM 路径生成，仅供人工复核；修复预演会对候选做真实重跑，但预演结论仍不是自动改写或部署授权；
 - 不支持 WARC / HAR / RSS / OAI-PMH 等归档或订阅协议；
 - 不实现真实抓取、代理池、Cookie、验证码、反爬规避、分布式调度、任务队列；
 - 不实现自动回写配方、自动提交选择器、链接巡检、表单填报 RPA；
