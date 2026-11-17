@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}择约回归台{% endblock %}</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='app.css') }}">
+  <script src="{{ url_for('static', filename='app.js') }}" defer></script>
+</head>
+<body>
+  <header class="site-header">
+    <div class="shell header-inner">
+      <div>
+        <a class="brand" href="{{ url_for('index') }}">择约回归台</a>
+        <span class="tagline">selregress · 本地快照选择器契约回归</span>
+      </div>
+      <nav aria-label="主导航">
+        <a href="{{ url_for('index') }}">运行列表</a>
+        <a href="{{ url_for('healthz') }}">健康检查</a>
+      </nav>
+    </div>
+  </header>
+  <main class="shell">
+    {% block content %}{% endblock %}
+  </main>
+  <footer class="site-footer">
+    <div class="shell">
+      只读复核台 · 不发起网络请求 · 仅用于本人拥有或已获授权的本地快照材料
+    </div>
+  </footer>
+</body>
+</html>

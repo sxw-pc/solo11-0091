@@ -1,0 +1,11 @@
+{
+  "baseline_diff_count": 11,
+  "field_result_count": 40,
+  "finding_count": 11,
+  "fixed_time": "2024-03-01T00:00:00Z",
+  "html_sha256": "64b7758174043495cbe93ed429cbb765833219bd9b4d89ebaa4ac493170729b5",
+  "json_sha256": "4221868341bdb60011508fd9aeb286b462012893eb252edc24bf801a4b461f4d",
+  "md_sha256": "52f011011350f3c83871c8dd00d6b71121dc6f51cf2e73525d774f0b494e1ee7",
+  "run_id": "20240301T000000Z-e23831f518b0",
+  "workspace_report_dir": "tests/_tmp/shared/runs/20240301T000000Z-e23831f518b0"
+}
