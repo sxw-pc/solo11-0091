@@ -3,17 +3,21 @@ __pycache__/
 *.py[cod]
 .pytest_cache/
 .benchmarks/
-
 # Runtime outputs (regenerable with `python -m selregress demo`)
 runs/
 var/
 *.db
-
 # Test sandboxes
 tests/_tmp/
-
 # Editor / OS noise
 .DS_Store
 Thumbs.db
 .idea/
 .vscode/
+.venv/
+venv/
+node_modules/
+*.pyc
+.coverage
+.env
+dist/
