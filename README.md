@@ -52,6 +52,8 @@ python -m selregress ledger --latest
 pytest -q
 ```
 
+本地公告清单可用 `python -m selregress notice-intake --manifest fixtures/notice_intake/manifest-ready.json` 核对。它从已归档的公告列表卡片与显式声明的详情快照读取标题、链接、预算和截止日，使用既有选择器匹配与字段转换，输出每条公告的来源摘要及列表/详情一致性；`manifest-conflict.json` 演示预算不一致时返回 blocked。此命令只读本地材料，不发送投标或网络请求。
+
 `demo` 使用仓库自带 fixture，固定时间 `2024-03-01T00:00:00Z`，因此报告内容可复现。演示数据刻意包含选择器失效、多匹配、类型失败、跨版本漂移与基线变化，因此运行结论为 `warn`，CLI 退出码为 **2**；`make demo` 接受这一预期告警并返回成功。要验证失败分支，可修改临时配置或将 `--fail-on-warn` 打开。
 
 安装依赖（离线环境使用本地 wheel 源）：

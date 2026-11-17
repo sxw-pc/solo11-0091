@@ -42,6 +42,8 @@ def build_parser() -> argparse.ArgumentParser:
     ledger.add_argument("--latest", action="store_true", help="输出最近一次运行摘要")
     ledger.add_argument("--config", default=DEFAULT_CONFIG)
     ledger.add_argument("--db", default=None)
+    notice = sub.add_parser("notice-intake", help="核对本地公告列表与详情材料")
+    notice.add_argument("--manifest", required=True, help="本地公告材料清单")
     return parser
 
 
@@ -100,6 +102,14 @@ def _ledger_command(args: argparse.Namespace) -> int:
     return 0
 
 
+def _notice_intake_command(args: argparse.Namespace) -> int:
+    from .notice_intake import intake_notices
+
+    result = intake_notices(args.manifest)
+    _print_json(result)
+    return 0 if result["status"] == "ready" else 2
+
+
 def main(argv: Sequence[str] | None = None) -> int:
     try:
         args = build_parser().parse_args(argv)
@@ -109,6 +119,8 @@ def main(argv: Sequence[str] | None = None) -> int:
             return _serve_command(args)
         if args.command == "ledger":
             return _ledger_command(args)
+        if args.command == "notice-intake":
+            return _notice_intake_command(args)
         raise InputError("CLI_ARGUMENT", f"未知命令: {args.command}")
     except InputError as exc:
         sys.stderr.write(stable_json_text({"error": exc.code, "message": exc.message, "details": exc.details}))
