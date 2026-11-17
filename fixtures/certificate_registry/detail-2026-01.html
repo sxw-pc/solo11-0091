@@ -1,0 +1,19 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>Synthetic certificate registry</title></head><body>
+<main data-certificate="REC-001" data-claim-hour="2026-01-01T10:00:00Z" data-claim-mwh="6">
+<table id="certificate-events"><tbody>
+<tr data-event="M" data-input="" data-authorizer="Registry" data-output="M:0" data-owner="Generator" data-units="10"><td>Mint</td></tr>
+<tr data-event="S_A" data-input="M:0" data-authorizer="Generator" data-output="S_A:0" data-owner="Pool-A" data-units="6"><td>Split A</td></tr>
+<tr data-event="S_A" data-input="M:0" data-authorizer="Generator" data-output="S_A:1" data-owner="Pool-B" data-units="4"><td>Split B</td></tr>
+<tr data-event="S_B" data-input="M:0" data-authorizer="Generator" data-output="S_B:0" data-owner="Broker" data-units="10"><td>Rival transfer</td></tr>
+<tr data-event="T_A" data-input="S_A:0" data-authorizer="Pool-A" data-output="T_A:0" data-owner="Consumer" data-units="6"><td>Transfer to consumer</td></tr>
+<tr data-event="R_A" data-input="T_A:0" data-authorizer="Consumer" data-output="R_A:0" data-owner="retired" data-units="6" data-hour="2026-01-01T10:00:00Z"><td>Retire</td></tr>
+</tbody></table>
+<table id="mirror-witnesses"><tbody>
+<tr data-event="M" data-mirror="east"></tr><tr data-event="M" data-mirror="west"></tr><tr data-event="M" data-mirror="central"></tr>
+<tr data-event="S_A" data-mirror="east"></tr><tr data-event="S_A" data-mirror="west"></tr>
+<tr data-event="S_B" data-mirror="central"></tr>
+<tr data-event="T_A" data-mirror="east"></tr><tr data-event="T_A" data-mirror="west"></tr>
+<tr data-event="R_A" data-mirror="east"></tr><tr data-event="R_A" data-mirror="west"></tr>
+</tbody></table>
+</main></body></html>

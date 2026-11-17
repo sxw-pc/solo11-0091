@@ -1,0 +1,42 @@
+schema_version: 1
+name: site_a_list
+site: site-a.invalid
+page_type: list
+description: 示例甲单位公告列表页字段契约
+fields:
+  - name: heading
+    selector: h1.page-heading
+    type: string
+    required: true
+  - name: featured_title
+    selector: .featured .card-title
+    type: string
+    required: true
+  - name: featured_link
+    selector: .featured a.card-link
+    extract: href
+    type: url
+    required: true
+  - name: featured_price
+    selector: .featured .card-price
+    type: decimal
+    required: false
+    normalize:
+      - trim
+      - strip_thousands
+  - name: featured_date
+    selector: .featured .card-date
+    type: date
+    required: false
+    normalize:
+      - trim
+  - name: featured_category
+    selector: .featured .category
+    type: string
+    required: false
+  - name: tags
+    selector: .featured .tag
+    type: string
+    multi: true
+    separator: " | "
+    required: false

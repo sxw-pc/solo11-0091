@@ -1,0 +1,48 @@
+{% extends "base.html" %}
+{% block title %}快照 {{ snapshot.path }} · 择约回归台{% endblock %}
+{% block content %}
+<div class="breadcrumb">
+  <a href="{{ url_for('index') }}">运行列表</a> /
+  <a href="{{ url_for('run_detail', run_id=run.run_id) }}">{{ run.run_id }}</a> /
+  <span>快照</span>
+</div>
+<section class="hero compact">
+  <div>
+    <p class="eyebrow">SNAPSHOT</p>
+    <h1 class="mono">{{ snapshot.path }}</h1>
+    <p class="muted">{{ snapshot.site }} / {{ snapshot.page_type }} · 版本 {{ snapshot.version }} ·
+      {{ snapshot.size }} bytes · 采集时间占位 {{ snapshot.captured_at or '-' }}</p>
+    <p class="mono small">SHA-256 {{ snapshot.sha256 }}</p>
+    {% if snapshot.warnings %}
+      <p><span class="status status-warn">warnings</span> {{ snapshot.warnings | join(', ') }}</p>
+    {% endif %}
+  </div>
+</section>
+
+<section class="panel">
+  <h2>该快照的字段结果</h2>
+  {% if fields %}
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>字段</th><th>类型</th><th>选择器</th><th>状态</th><th>命中</th><th>原始值</th><th>归一化值</th><th>稳定性</th></tr></thead>
+      <tbody>
+      {% for field in fields %}
+        <tr>
+          <td><code>{{ field.field_name }}</code>{% if field.required %}<br><span class="muted">required</span>{% endif %}</td>
+          <td>{{ field.field_type }}</td>
+          <td class="mono small">{{ field.used_selector }}</td>
+          <td><span class="status status-{{ field.status }}">{{ field.status }}</span></td>
+          <td>{{ field.match_count }}</td>
+          <td class="value-cell">{{ field.raw_values | join(' ⏎ ') if field.raw_values else '—' }}</td>
+          <td class="value-cell">{{ field.normalized_value if field.normalized_value is not none else '—' }}</td>
+          <td>{{ field.score }}</td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <p class="empty">该快照没有字段结果。</p>
+  {% endif %}
+</section>
+{% endblock %}
