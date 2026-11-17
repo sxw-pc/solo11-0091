@@ -42,6 +42,8 @@ def build_parser() -> argparse.ArgumentParser:
     ledger.add_argument("--latest", action="store_true", help="输出最近一次运行摘要")
     ledger.add_argument("--config", default=DEFAULT_CONFIG)
     ledger.add_argument("--db", default=None)
+    table = sub.add_parser("table-evidence", help="核对本地表格合同输入，不生成记录")
+    table.add_argument("--manifest", default="fixtures/table_contract/manifest.json")
     return parser
 
 
@@ -109,6 +111,10 @@ def main(argv: Sequence[str] | None = None) -> int:
             return _serve_command(args)
         if args.command == "ledger":
             return _ledger_command(args)
+        if args.command == "table-evidence":
+            from .table_evidence import inspect_table_contract
+            _print_json(inspect_table_contract(args.manifest))
+            return 0
         raise InputError("CLI_ARGUMENT", f"未知命令: {args.command}")
     except InputError as exc:
         sys.stderr.write(stable_json_text({"error": exc.code, "message": exc.message, "details": exc.details}))
