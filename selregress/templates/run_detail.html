@@ -1,0 +1,143 @@
+{% extends "base.html" %}
+{% block title %}{{ run.run_id }} · 择约回归台{% endblock %}
+{% block content %}
+<div class="breadcrumb"><a href="{{ url_for('index') }}">运行列表</a> / <span>{{ run.run_id }}</span></div>
+<section class="hero compact">
+  <div>
+    <p class="eyebrow">RUN DETAIL</p>
+    <h1><span class="mono">{{ run.run_id }}</span>
+      <span class="status status-{{ run.status }}">{{ run.status }}</span>
+    </h1>
+    <p class="muted">生成于 <span class="mono">{{ run.generated_at }}</span>
+      {% if run.fixed_time %}· 时间已固定{% endif %} · 配置 <code>{{ run.config_path }}</code></p>
+    <p class="muted">报告目录 <code>{{ run.report_dir }}</code></p>
+  </div>
+</section>
+
+<section class="metrics">
+  <div class="metric"><span>配方</span><b>{{ run.recipe_count }}</b></div>
+  <div class="metric"><span>快照</span><b>{{ run.snapshot_count }}</b></div>
+  <div class="metric"><span>字段结果</span><b>{{ run.field_result_count }}</b></div>
+  <div class="metric"><span>发现项</span><b>{{ run.finding_count }}</b></div>
+  <div class="metric"><span>失败发现</span><b>{{ run.finding_count and findings | selectattr('severity', 'equalto', 'fail') | list | length }}</b></div>
+  <div class="metric"><span>基线差异</span><b>{{ run.baseline_diff_count }}</b></div>
+</section>
+
+<section class="panel">
+  <div class="panel-head">
+    <h2>字段结果矩阵</h2>
+    <form class="filters" method="get" action="{{ url_for('run_detail', run_id=run.run_id) }}">
+      <label>站点 <input name="site" value="{{ filters.site or '' }}" placeholder="site-a.invalid"></label>
+      <label>页面
+        <select name="page_type">
+          <option value="">全部</option>
+          {% for value in ['list', 'detail'] %}
+          <option value="{{ value }}" {% if filters.page_type == value %}selected{% endif %}>{{ value }}</option>
+          {% endfor %}
+        </select>
+      </label>
+      <label>字段 <input name="field_name" value="{{ filters.field_name or '' }}" placeholder="price"></label>
+      <label>状态
+        <select name="severity">
+          <option value="">全部</option>
+          {% for value in ['pass', 'warn', 'fail', 'info'] %}
+          <option value="{{ value }}" {% if filters.severity == value %}selected{% endif %}>{{ value }}</option>
+          {% endfor %}
+        </select>
+      </label>
+      <button type="submit">筛选</button>
+    </form>
+  </div>
+  {% if fields %}
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>站点 / 版本</th><th>配方 / 字段</th><th>状态</th><th>命中</th><th>转换</th><th>稳定性</th><th>归一化值</th><th>标记</th></tr></thead>
+      <tbody>
+      {% for field in fields %}
+        <tr>
+          <td>
+            <span class="mono">{{ field.site }}</span><br>
+            <span class="muted">{{ field.version }}</span>
+            {% if field.snapshot_id %}<br><a href="{{ url_for('snapshot_detail', snapshot_id=field.snapshot_id) }}">快照</a>{% endif %}
+          </td>
+          <td><strong>{{ field.recipe_name }}</strong><br><code>{{ field.field_name }}</code> · {{ field.field_type }}</td>
+          <td><span class="status status-{{ field.status }}">{{ field.status }}</span></td>
+          <td>{{ field.match_count }}{% if field.required %}<br><span class="muted">required</span>{% endif %}</td>
+          <td>{{ field.conversion_status }}</td>
+          <td>{{ field.score }}</td>
+          <td class="value-cell">{{ field.normalized_value if field.normalized_value is not none else '—' }}</td>
+          <td>{% for flag in field.flags %}<span class="chip">{{ flag }}</span>{% else %}<span class="muted">—</span>{% endfor %}</td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <p class="empty">没有符合条件的字段结果。</p>
+  {% endif %}
+</section>
+
+<section class="grid-two">
+  <div class="panel">
+    <h2>发现项</h2>
+    {% if findings %}
+      <ul class="finding-list">
+      {% for item in findings %}
+        <li class="finding-row severity-{{ item.severity }}">
+          <a href="{{ url_for('finding_detail', finding_id=item.id) }}">
+            <span class="status status-{{ item.severity }}">{{ item.severity }}</span>
+            <strong>{{ item.code }}</strong>
+          </a>
+          <span class="muted">{{ item.recipe_name }}{% if item.field_name %}.{{ item.field_name }}{% endif %} @ {{ item.version }}</span>
+          <p>{{ item.message }}</p>
+        </li>
+      {% endfor %}
+      </ul>
+    {% else %}
+      <p class="empty">无发现项。</p>
+    {% endif %}
+  </div>
+  <div class="panel">
+    <h2>基线差异</h2>
+    {% if diffs %}
+      <ul class="diff-list">
+      {% for item in diffs %}
+        <li>
+          <span class="status status-{{ item.severity }}">{{ item.severity }}</span>
+          <strong>{{ item.recipe_name }}.{{ item.field_name }}</strong>
+          <span class="chip">{{ item.change_type }}</span>
+          <div class="muted">{{ item.message }}</div>
+        </li>
+      {% endfor %}
+      </ul>
+    {% else %}
+      <p class="empty">无基线差异。</p>
+    {% endif %}
+  </div>
+</section>
+
+<section class="grid-two">
+  <div class="panel">
+    <h2>配方清单</h2>
+    <ul class="plain-list">
+    {% for item in recipes %}
+      <li><strong>{{ item.name }}</strong> <span class="muted">{{ item.site }}/{{ item.page_type }}</span>
+        <div class="mono small">{{ item.path }}</div>
+        <div class="mono small">SHA-256 {{ item.sha256 }}</div>
+      </li>
+    {% endfor %}
+    </ul>
+  </div>
+  <div class="panel">
+    <h2>快照清单</h2>
+    <ul class="plain-list">
+    {% for item in snapshots %}
+      <li><a href="{{ url_for('snapshot_detail', snapshot_id=item.id) }}">{{ item.path }}</a>
+        <span class="muted">{{ item.version }} · {{ item.captured_at or '-' }} · {{ item.size }} bytes</span>
+        {% if item.warnings %}<div class="chip warn">{{ item.warnings | join(', ') }}</div>{% endif %}
+      </li>
+    {% endfor %}
+    </ul>
+  </div>
+</section>
+{% endblock %}

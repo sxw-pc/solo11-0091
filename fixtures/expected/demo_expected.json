@@ -1,0 +1,84 @@
+{
+  "diagnostic_codes": [
+    "ambiguous_selector",
+    "multi_match",
+    "no_match",
+    "type_error",
+    "version_drift"
+  ],
+  "drift_fields": [
+    "featured_date",
+    "product_code",
+    "stock"
+  ],
+  "exit_code": 2,
+  "failed_fields": [],
+  "fixed_time": "2024-03-01T00:00:00Z",
+  "run_id": "20240301T000000Z-e23831f518b0",
+  "schema_version": 1,
+  "status": "warn",
+  "summary": {
+    "ambiguous_field_names": [
+      "site_b_detail.title@2024-02"
+    ],
+    "ambiguous_selector_count": 1,
+    "average_stability": 94,
+    "baseline_diff_count": 11,
+    "baseline_fail_count": 0,
+    "baseline_warn_count": 11,
+    "empty_field_count": 0,
+    "empty_field_names": [],
+    "empty_rate_percent": 0,
+    "fail_finding_count": 0,
+    "field_fail_count": 0,
+    "field_pass_count": 28,
+    "field_result_count": 40,
+    "field_warn_count": 12,
+    "field_with_value_count": 37,
+    "finding_count": 11,
+    "hit_rate_percent": 92,
+    "info_finding_count": 0,
+    "input_warning_count": 0,
+    "min_stability": 60,
+    "multi_match_field_count": 1,
+    "multi_match_field_names": [
+      "site_a_list.featured_category@2024-02"
+    ],
+    "no_match_field_count": 3,
+    "no_match_field_names": [
+      "site_a_detail.stock@2024-02",
+      "site_a_list.featured_date@2024-02",
+      "site_b_detail.product_code@2024-02"
+    ],
+    "recipe_count": 3,
+    "snapshot_count": 6,
+    "status": "warn",
+    "type_error_field_count": 3,
+    "type_error_field_names": [
+      "site_a_detail.price@2024-02",
+      "site_a_list.featured_price@2024-02",
+      "site_b_detail.price@2024-02"
+    ],
+    "version_drift_field_count": 3,
+    "version_drift_field_names": [
+      "site_a_detail.stock@2024-02",
+      "site_a_list.featured_date@2024-02",
+      "site_b_detail.product_code@2024-02"
+    ],
+    "warn_finding_count": 11
+  },
+  "warned_fields": [
+    "site_a_detail.description@2024-02",
+    "site_a_detail.in_stock@2024-02",
+    "site_a_detail.price@2024-02",
+    "site_a_detail.sku@2024-02",
+    "site_a_detail.stock@2024-02",
+    "site_a_detail.updated_at@2024-02",
+    "site_a_list.featured_category@2024-02",
+    "site_a_list.featured_date@2024-02",
+    "site_a_list.featured_price@2024-02",
+    "site_b_detail.price@2024-02",
+    "site_b_detail.product_code@2024-02",
+    "site_b_detail.title@2024-02"
+  ]
+}
