@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>择约回归台报告 {{ report.run.run_id }}</title>
+  <style>
+    :root { --ink:#172033; --muted:#65708a; --line:#dbe1ea; --bg:#f4f6f9; --card:#fff;
+      --pass:#176b45; --warn:#8a5a00; --fail:#a32929; --accent:#245c8a; }
+    * { box-sizing: border-box; }
+    body { margin:0; background:var(--bg); color:var(--ink);
+      font-family: "Microsoft YaHei", "PingFang SC", system-ui, sans-serif; line-height:1.55; }
+    header { background:linear-gradient(135deg,#15263a,#2d5778); color:#fff; padding:34px 24px; }
+    header h1 { margin:0 0 6px; font-size:28px; }
+    header p { margin:2px 0; color:#dbe7f2; }
+    main { max-width:1180px; margin:0 auto; padding:22px 18px 50px; }
+    nav { margin:14px 0 20px; display:flex; flex-wrap:wrap; gap:8px; }
+    nav a { color:var(--accent); background:#fff; border:1px solid var(--line);
+      padding:5px 10px; border-radius:999px; text-decoration:none; font-size:13px; }
+    section { background:var(--card); border:1px solid var(--line); border-radius:12px;
+      padding:18px; margin:16px 0; }
+    h2 { font-size:19px; margin:0 0 12px; }
+    h3 { font-size:15px; margin:16px 0 8px; }
+    table { border-collapse:collapse; width:100%; font-size:13px; }
+    th, td { text-align:left; padding:7px 8px; border-bottom:1px solid var(--line); vertical-align:top; }
+    th { color:var(--muted); font-weight:600; background:#f8fafc; }
+    code { background:#f0f3f7; padding:1px 4px; border-radius:4px; }
+    .status { display:inline-block; border-radius:999px; padding:1px 8px; font-size:12px; font-weight:700; }
+    .status-pass { color:var(--pass); background:#e7f5ed; }
+    .status-warn { color:var(--warn); background:#fff3d7; }
+    .status-fail { color:var(--fail); background:#fde8e8; }
+    .status-info { color:var(--muted); background:#eef1f5; }
+    .cards { display:grid; grid-template-columns:repeat(auto-fit,minmax(160px,1fr)); gap:10px; }
+    .card { border:1px solid var(--line); border-radius:9px; padding:10px 12px; }
+    .card b { display:block; font-size:22px; }
+    .muted { color:var(--muted); }
+    .finding { border-left:4px solid var(--line); padding:8px 12px; margin:9px 0; background:#fbfcfe; }
+    .finding.fail { border-color:var(--fail); }
+    .finding.warn { border-color:var(--warn); }
+    .finding.info { border-color:var(--muted); }
+    ul { margin:6px 0 0; padding-left:22px; }
+    footer { color:var(--muted); text-align:center; font-size:12px; margin-top:24px; }
+    pre { white-space:pre-wrap; word-break:break-word; font-size:12px; background:#f7f9fb;
+      padding:8px; border-radius:6px; }
+  </style>
+</head>
+<body>
+<header>
+  <h1>择约回归台 · 运行报告</h1>
+  <p>运行 ID <code>{{ report.run.run_id }}</code> · 结论 {{ report.run.status }}</p>
+  <p>生成时间 {{ report.run.generated_at }} · 固定时间 {{ report.run.fixed_time }} · 配置 {{ report.run.config_path }}</p>
+</header>
+<main>
+  <nav>
+    <a href="#overview">总览</a>
+    <a href="#fields">字段矩阵</a>
+    <a href="#findings">发现项</a>
+    <a href="#drift">跨版本漂移</a>
+    <a href="#suggestions">候选建议</a>
+    <a href="#diffs">基线差异</a>
+    <a href="#inventory">配方与快照</a>
+  </nav>
+
+  <section id="overview">
+    <h2>总览</h2>
+    <div class="cards">
+      <div class="card"><span class="muted">配方</span><b>{{ report.summary.recipe_count }}</b></div>
+      <div class="card"><span class="muted">快照</span><b>{{ report.summary.snapshot_count }}</b></div>
+      <div class="card"><span class="muted">字段结果</span><b>{{ report.summary.field_result_count }}</b></div>
+      <div class="card"><span class="muted">失败发现</span><b>{{ report.summary.fail_finding_count }}</b></div>
+      <div class="card"><span class="muted">警告发现</span><b>{{ report.summary.warn_finding_count }}</b></div>
+      <div class="card"><span class="muted">平均稳定性</span><b>{{ report.summary.average_stability }}</b></div>
+    </div>
+  </section>
+
+  <section id="fields">
+    <h2>字段矩阵</h2>
+    <table>
+      <thead><tr><th>配方</th><th>版本</th><th>字段</th><th>状态</th><th>命中</th><th>转换</th><th>稳定性</th><th>标记</th></tr></thead>
+      <tbody>
+      {% for field in report.fields %}
+        <tr>
+          <td>{{ field.recipe_name }}</td>
+          <td>{{ field.version }}</td>
+          <td><code>{{ field.field_name }}</code></td>
+          <td><span class="status status-{{ field.status }}">{{ field.status }}</span></td>
+          <td>{{ field.match_count }}</td>
+          <td>{{ field.conversion_status }}</td>
+          <td>{{ field.score }}</td>
+          <td>{{ field.flags | join(', ') if field.flags else '-' }}</td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </section>
+
+  <section id="findings">
+    <h2>发现项</h2>
+    {% if report.findings %}
+      {% for item in report.findings %}
+        <div class="finding {{ item.severity }}">
+          <strong>[{{ item.severity }}] {{ item.code }}</strong>
+          <span class="muted">{{ item.recipe_name }}.{{ item.field_name or '-' }} @ {{ item.version }}</span>
+          <div>{{ item.message }}</div>
+        </div>
+      {% endfor %}
+    {% else %}
+      <p class="muted">无发现项。</p>
+    {% endif %}
+  </section>
+
+  <section id="drift">
+    <h2>跨版本漂移</h2>
+    {% set drift = report.findings | selectattr('code', 'equalto', 'version_drift') | list %}
+    {% if drift %}
+      <ul>
+      {% for item in drift %}
+        <li><code>{{ item.recipe_name }}.{{ item.field_name }}</code>：
+          {{ item.evidence.version_pair | join(' → ') }}，{{ item.message }}</li>
+      {% endfor %}
+      </ul>
+    {% else %}
+      <p class="muted">无跨版本漂移。</p>
+    {% endif %}
+  </section>
+
+  <section id="suggestions">
+    <h2>候选选择器建议</h2>
+    <p class="muted">只读线索，按确定性顺序最多五条；不会写回配方。</p>
+    {% set has_suggestions = report.findings | selectattr('suggestions') | list %}
+    {% if has_suggestions %}
+      {% for item in report.findings %}
+        {% for candidate in item.suggestions %}
+          <div class="finding info">
+            <code>{{ candidate.selector }}</code>
+            <strong>{{ candidate.confidence }}</strong> · {{ candidate.score }} 分
+            <div>{{ item.recipe_name }}.{{ item.field_name }}：{{ candidate.reason }}</div>
+            <div class="muted">风险：{{ candidate.risk }}</div>
+          </div>
+        {% endfor %}
+      {% endfor %}
+    {% else %}
+      <p class="muted">无候选建议。</p>
+    {% endif %}
+  </section>
+
+  <section id="diffs">
+    <h2>基线差异</h2>
+    {% if report.baseline_diffs %}
+      <table>
+        <thead><tr><th>字段</th><th>类型</th><th>级别</th><th>旧值</th><th>新值</th></tr></thead>
+        <tbody>
+        {% for item in report.baseline_diffs %}
+          <tr>
+            <td><code>{{ item.recipe_name }}.{{ item.field_name }}</code></td>
+            <td>{{ item.change_type }}</td>
+            <td><span class="status status-{{ item.severity }}">{{ item.severity }}</span></td>
+            <td>{{ item.old_value }}</td>
+            <td>{{ item.new_value }}</td>
+          </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    {% else %}
+      <p class="muted">无基线差异。</p>
+    {% endif %}
+  </section>
+
+  <section id="inventory">
+    <h2>配方与快照清单</h2>
+    <h3>配方</h3>
+    <ul>
+    {% for item in report.recipes %}
+      <li><code>{{ item.name }}</code> · {{ item.site }}/{{ item.page_type }} · SHA-256 {{ item.sha256[:16] }}…</li>
+    {% endfor %}
+    </ul>
+    <h3>快照</h3>
+    <ul>
+    {% for item in report.snapshots %}
+      <li><code>{{ item.path }}</code> · {{ item.version }} · 采集时间占位 {{ item.captured_at or '-' }} · {{ item.size }} bytes · SHA-256 {{ item.sha256[:16] }}…</li>
+    {% endfor %}
+    </ul>
+  </section>
+
+  <footer>仅用于分析本人拥有或已获授权的本地快照材料 · 无外部资源 · 只读报告</footer>
+</main>
+</body>
+</html>

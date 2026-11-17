@@ -1,0 +1,13 @@
+schema_version: 1
+name: malformed_demo
+site: site-a.invalid
+page_type: detail
+unexpected_top_key: true
+fields:
+  - name: duplicate_field
+    selector: ""
+    type: number
+    required: "yes"
+  - name: duplicate_field
+    selector: h1
+    type: string

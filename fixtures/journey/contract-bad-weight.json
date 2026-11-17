@@ -1,0 +1,53 @@
+{
+  "schema_version": 1,
+  "snapshot_files": [
+    "fixtures/journey/west.html",
+    "fixtures/journey/east.html"
+  ],
+  "snapshot_sha256": {
+    "fixtures/journey/west.html": "d754a550baba0623c0774566a6aa87f04ad1a424a6d59bfc7ecc05771c447286",
+    "fixtures/journey/east.html": "fe8250daccda1f1ca0e2344715992aac91ebac2a067a57ad52657caa9a4e8aca"
+  },
+  "trip_selector": "tr.trip",
+  "origin": "A",
+  "destination": "C",
+  "ready_time": "07:55",
+  "deadline": "10:00",
+  "minimum_transfer_minutes": 10,
+  "initial_choice_before_scenario_observed": true,
+  "rebook_after_observed_arrival": true,
+  "scenarios": [
+    {
+      "scenario_id": "normal",
+      "weight_pct": 40,
+      "arrival_delay_minutes": {
+        "X1": 0,
+        "X2": 0,
+        "X3": 0,
+        "Y1": 0,
+        "Y2": 0
+      }
+    },
+    {
+      "scenario_id": "slow_feeder",
+      "weight_pct": 59,
+      "arrival_delay_minutes": {
+        "X1": 20,
+        "X2": 40,
+        "X3": 0,
+        "Y1": 0,
+        "Y2": 0
+      }
+    }
+  ],
+  "travel_contracts": [
+    {
+      "kind": "expected_fastest",
+      "objective": "minimum_expected_arrival"
+    },
+    {
+      "kind": "guaranteed_by_deadline",
+      "objective": "arrives_by_deadline_in_every_scenario"
+    }
+  ]
+}
