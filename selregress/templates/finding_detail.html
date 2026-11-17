@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+{% block title %}发现 {{ finding.code }} · 择约回归台{% endblock %}
+{% block content %}
+<div class="breadcrumb">
+  <a href="{{ url_for('index') }}">运行列表</a> /
+  <a href="{{ url_for('run_detail', run_id=run.run_id) }}">{{ run.run_id }}</a> /
+  <span>发现项</span>
+</div>
+<section class="hero compact">
+  <div>
+    <p class="eyebrow">FINDING</p>
+    <h1><span class="status status-{{ finding.severity }}">{{ finding.severity }}</span>
+      <span class="mono">{{ finding.code }}</span></h1>
+    <p>{{ finding.message }}</p>
+    <p class="muted">
+      <code>{{ finding.recipe_name }}{% if finding.field_name %}.{{ finding.field_name }}{% endif %}</code>
+      · {{ finding.site }}/{{ finding.page_type }} · 版本 {{ finding.version }}
+    </p>
+    <p class="mono small">{{ finding.snapshot_path }}</p>
+  </div>
+</section>
+
+<section class="panel">
+  <h2>只读归因证据</h2>
+  <pre class="evidence">{{ evidence_json }}</pre>
+</section>
+
+<section class="panel">
+  <h2>候选选择器建议</h2>
+  <p class="muted">确定性排序，最多 5 条。仅作人工复核线索，不会写回任何配方。</p>
+  {% if finding.suggestions %}
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>候选选择器</th><th>置信度</th><th>分数</th><th>理由</th><th>风险</th></tr></thead>
+      <tbody>
+      {% for item in finding.suggestions %}
+        <tr>
+          <td><code>{{ item.selector }}</code></td>
+          <td>{{ item.confidence }}</td>
+          <td>{{ item.score }}</td>
+          <td>{{ item.reason }}</td>
+          <td class="muted">{{ item.risk }}</td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <p class="empty">该发现项没有候选建议。</p>
+  {% endif %}
+</section>
+{% endblock %}
