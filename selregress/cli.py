@@ -44,6 +44,15 @@ def build_parser() -> argparse.ArgumentParser:
     ledger.add_argument("--db", default=None)
     table = sub.add_parser("table-evidence", help="核对本地表格合同输入，不生成记录")
     table.add_argument("--manifest", default="fixtures/table_contract/manifest.json")
+    asset = sub.add_parser(
+        "asset-evidence",
+        help="离线清点本地授权照片：派生证据与按合同的许可单元裁决",
+    )
+    asset.add_argument("--manifest", default="fixtures/asset_contract/manifest.json")
+    asset.add_argument(
+        "--format", choices=("json", "markdown"), default="json",
+        help="json 输出完整可复核证据，markdown 输出人类可读裁决摘要",
+    )
     return parser
 
 
@@ -115,12 +124,26 @@ def main(argv: Sequence[str] | None = None) -> int:
             from .table_evidence import inspect_table_contract
             _print_json(inspect_table_contract(args.manifest))
             return 0
+        if args.command == "asset-evidence":
+            from .asset_evidence import inspect_asset_contract
+            from .reporting import render_asset_contract_markdown
+            evidence = inspect_asset_contract(args.manifest)
+            if args.format == "markdown":
+                sys.stdout.write(render_asset_contract_markdown(evidence))
+                sys.stdout.flush()
+            else:
+                _print_json(evidence)
+            return 0
         raise InputError("CLI_ARGUMENT", f"未知命令: {args.command}")
     except InputError as exc:
         sys.stderr.write(stable_json_text({"error": exc.code, "message": exc.message, "details": exc.details}))
         return 3
     except SelregressError as exc:
         sys.stderr.write(stable_json_text({"error": exc.code, "message": exc.message}))
+        return 3
+    except ValueError as exc:
+        # asset_evidence.AssetEvidenceError：输入不可信/证据不足，拒绝自动少计
+        sys.stderr.write(stable_json_text({"error": "ASSET_EVIDENCE_REJECTED", "message": str(exc)}))
         return 3
     except KeyboardInterrupt:
         return 130

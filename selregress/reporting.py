@@ -165,6 +165,90 @@ def render_markdown(report: dict[str, Any]) -> str:
     return "\n".join(lines)
 
 
+def render_asset_contract_markdown(evidence: dict[str, Any]) -> str:
+    """渲染本地照片许可清点的人类可读裁决（完整证据仍以 JSON 为准）。"""
+    decisions = evidence["license_decisions"]
+    lines = [
+        "# 本地授权照片许可清点",
+        "",
+        f"- 快照：`{evidence['snapshot']}`（SHA-256 `{evidence['snapshot_sha256'][:16]}…`）",
+        f"- 每许可单元费用：{evidence['license_fee_per_unit']}",
+        "- 用途：本地授权素材离线清点，不删图、不改配方、不联网。",
+        "",
+        "## 资产与主体证据",
+        "",
+        "| 资产 | SKU | 图片 | 尺寸 | 主体像素 | 主体占比 | SHA-256（前 12 位） |",
+        "| --- | --- | --- | --- | ---: | ---: | --- |",
+    ]
+    for asset in evidence["assets"]:
+        lines.append(
+            f"| {asset['asset_id']} | {_md(asset['sku'])} | `{_md(asset['image_src'])}` "
+            f"| {asset['width']}×{asset['height']} | {asset['subject_pixel_count']} "
+            f"| {asset['subject_coverage_ratio']:.3f} | `{asset['sha256'][:12]}` |"
+        )
+    lines += ["", "## 按合同裁决（两份合同各自独立，互不替代）", ""]
+    for contract in evidence["contracts"]:
+        decision = decisions[contract]
+        lines += [
+            f"### 合同 `{contract}`",
+            "",
+            f"- 规则：{decision['rule']}",
+            f"- 照片家族数 / 许可单元：**{decision['license_units']}**",
+            f"- 应付费用：**{decision['total_fee']}**（{decision['license_units']} × {decision['fee_per_unit']}）",
+            "",
+            "| 家族 | 成员资产 | SKU | 不同 SHA 数 |",
+            "| --- | --- | --- | ---: |",
+        ]
+        for family in decision["photo_families"]:
+            lines.append(
+                f"| {family['family_id']} | {', '.join(family['asset_ids'])} "
+                f"| {_md(', '.join(family['skus']))} | {len(family['sha256'])} |"
+            )
+        lines.append("")
+    lines += ["## 派生关系证据", ""]
+    for edge in evidence["derivative_edges"]:
+        if not edge["accepted"]:
+            continue
+        if edge["edge_kind"] == "exact_copy":
+            lines.append(
+                f"- `{edge['base_asset']}` ↔ `{edge['candidate_asset']}`：字节完全相同（exact_copy）。"
+            )
+            continue
+        alignment = edge["best_alignment"]
+        lines.append(
+            f"- `{edge['base_asset']}` → `{edge['candidate_asset']}`：顺时针旋转 "
+            f"{alignment['rotation_degrees_cw']}°，四边裁切 "
+            f"上/右/下/左 = {alignment['crop_top_px']}/{alignment['crop_right_px']}/"
+            f"{alignment['crop_bottom_px']}/{alignment['crop_left_px']} px；"
+            f"主体双向覆盖率 {alignment['base_coverage']:.3f}/"
+            f"{alignment['candidate_coverage']:.3f}，主体同色率 "
+            f"{alignment['match_rate']:.3f}，归 {edge.get('family_id', '-')}。"
+        )
+    lines += ["", "## 拒合并反例（不得自动少计）", ""]
+    if evidence["rejected_merges"]:
+        lines += [
+            "| 底图 | 候选 | 拒绝原因 | 模板背景一致率 | 主体同色率 |",
+            "| --- | --- | --- | ---: | ---: |",
+        ]
+        for item in evidence["rejected_merges"]:
+            alignment = item.get("best_alignment") or {}
+            match_rate = alignment.get("match_rate")
+            lines.append(
+                f"| {item['base_asset']} | {item['candidate_asset']} "
+                f"| `{item['reject_reason']}` | {item['background']['template_agreement']:.3f} "
+                f"| {match_rate if match_rate is not None else '-'} |"
+            )
+    else:
+        lines.append("无。")
+    lines += [
+        "",
+        "> 仅在 90 度倍数旋转与有界边框裁切内、且重叠有效主体逐像素同色时合并家族；",
+        "> 歧义、超界变换、像素损坏、路径越界或不可信 snapshot 一律拒绝并按独立单元处理。",
+        "",
+    ]
+    return "\n".join(lines)
+
+
 def render_html(report: dict[str, Any], template_dir: Path) -> str:
     environment = Environment(
         loader=FileSystemLoader(str(template_dir)),
