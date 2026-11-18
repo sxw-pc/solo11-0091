@@ -13,6 +13,8 @@
 | `loader.py` | 配方与快照装配、覆盖检查 |
 | `recipe_validator.py` | 静态 schema 校验、CSS 语法校验、稳定错误码 |
 | `snapshot_reader.py` | 文件名解析、SHA-256、HTML 解析、空/畸形输入告警 |
+| `query_privacy_evidence.py` | 聚合查询卡读取、内部 0/1 世界预览（不产出发布决定） |
+| `query_release.py` | 两份事前发布合同、内部收据、可能世界/最优性证书与公开物裁剪 |
 | `matcher.py` | 选择器命中、候选回退、多候选一致性判断 |
 | `extractor.py` | 文本/属性/链接/图片/HTML 取值、归一化、类型转换 |
 | `diagnostics.py` | 字段诊断、稳定性评分、跨版本漂移 |
@@ -97,7 +99,25 @@ configs/demo.yaml
 
 单元测试覆盖加载、校验、快照、匹配、提取、诊断、基线、回归、台账与报告；集成测试调用完整 runner 与 Flask test client；golden 测试在固定时间、空台账、固定目录下核对三份报告的 SHA-256 与关键摘要，确保排序和序列化稳定。
 
-## 10. 已知取舍
+## 10. 聚合查询卡发布审查
+
+`query_privacy_evidence.py` 从本地 HTML 读取虚构人员的二值属性聚合卡，并只做内部预览：
+`inspect_query_snapshot` 保留 `independent_release_decision` / `composition_safe_decision`
+为 `null`，`preview_query_set` 的输出恒为 `internal_preview_only=true`、`publishable=false`。
+
+`query_release.py` 只对快照中已声明的完整 0/1 世界全集推理，不接受实数线性松弛：
+
+- `independent_card` 逐张判断“单独公开后每位在册人是否仍有 0/1 两种一致值”，
+  不推导跨卡安全性；
+- `composition_safe` 对候选卡的**交集约束**做分支定界：仅保留使每位在册人至少有两个
+  完整一致世界的卡集合，按总效用最大化，效用并列时取卡数更少、再取卡 ID 字典序更小者；
+  空集是始终可用的效用 0 兜底。证书记录探索节点、按效用上界/安全性剪枝的计数与搜索完整性。
+
+内部收据绑定源 HTML SHA-256、合同、可能世界证书与搜索证书，并以规范 JSON 摘要自校验；
+`verify_query_receipt` 在提供证据时重跑合同并逐项比对。`public_release_artifact` 只输出
+获准卡的 ID、成员与计数，不包含被拒卡计数、内部世界见证、源摘要或内部摘要。
+
+## 11. 已知取舍
 
 - 采用 Python `html.parser`，畸形 HTML 的解析结果可能因 BeautifulSoup 版本略有差异；
 - 跨版本漂移只关注相邻版本“有值/无值”，不推断业务语义；

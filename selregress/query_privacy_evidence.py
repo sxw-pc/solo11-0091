@@ -6,11 +6,14 @@ from pathlib import Path
 from typing import Any
 
 from .snapshot_reader import read_snapshot
-from .util import PROJECT_ROOT
+from .util import InputError, PROJECT_ROOT
 
 
-class QueryEvidenceError(ValueError):
-    pass
+class QueryEvidenceError(InputError):
+    """Invalid aggregate query snapshot or selected query set."""
+
+    def __init__(self, message: str):
+        super().__init__("QUERY_EVIDENCE_INVALID", message)
 
 
 def inspect_query_snapshot(path: str | Path, *, version: str = "2026-01",
@@ -35,7 +38,7 @@ def inspect_query_snapshot(path: str | Path, *, version: str = "2026-01",
             raise QueryEvidenceError("invalid aggregate count or utility") from exc
         if (not query_id or query_id in seen or len(members) < 2
                 or len(set(members)) != len(members) or not set(members) <= set(people)
-                or count <= 0 or count >= len(members) or utility <= 0):
+                or count < 0 or count > len(members) or utility <= 0):
             raise QueryEvidenceError("duplicate or invalid query card")
         seen.add(query_id)
         queries.append({"id": query_id, "members": members,

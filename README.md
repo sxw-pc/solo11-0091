@@ -110,6 +110,48 @@ python -m selregress run --config configs/demo.yaml --fail-on-warn
 python -m selregress run --config configs/demo.yaml --fixed-time 2024-03-01T00:00:00Z
 ```
 
+## 聚合查询卡发布审查（本地合成数据）
+
+仓库内的 `fixtures/query_privacy/` 是**全虚构**的二值属性聚合查询卡，不含真实个人数据。
+每张卡只声明成员集合与阳性计数，例如 Q1 = “A、B 中阳性数为 1”。`inspect_query_snapshot`
+只做内部诊断：它读 HTML、绑定原始字节 SHA-256，并把 `independent_release_decision` 与
+`composition_safe_decision` 留为 `null`。`preview_query_set` 对调用方指定的卡集合枚举全部
+0/1 世界，结果仅供内部预览（`internal_preview_only=true`、`publishable=false`），不构成发布决定。
+
+`selregress/query_release.py` 把两份**事前合同**落实为可核验裁决：
+
+- `independent_card`：逐张单独审查；仅当单独公开该卡后每位在册人都仍有 0 与 1 两种一致值时
+  才准发布该卡。它明确不声称跨卡组合安全（`cross_card_safety_claimed=false`）。
+- `composition_safe`：在候选卡集合上按**同一组公开卡的交集约束**重新枚举 0/1 世界；要求每位
+  在册人至少有两个不同的完整一致世界，最大化总效用，并用稳定规则裁决并列（效用相同取卡数更少，
+  再取字典序更小的卡 ID）。收据给出每人两种不同可行世界、被选/被拒卡与可复算的最优性搜索证书。
+
+同一份 R-01 快照上，两份合法合同对 Q3 给出相反结论：独立合同允许 Q1/Q2/Q3 各自对外，
+因此 Q3 可发布；联合保护合同的最优安全集合是 Q1+Q2（效用 8），Q3 单独安全但 Q1+Q3 会唯一
+推出 C、Q2+Q3 会唯一推出 A、三张全发唯一推出全部，故 Q3 暂缓。24 卡的 R-02 上，全部 24 张
+单独都安全（总效用 131），但联合约束下每人保持两种取值的全局最优只有 8 张、效用 49；搜索
+证书记录完整探索与剪枝计数，可被独立复算。
+
+```bash
+# 内部收据 + 公开卡集合（默认输出到 stdout）
+python -m selregress query-release \
+  --snapshot fixtures/query_privacy/detail-2026-01.html \
+  --contract composition_safe
+
+# 分别落盘并用绑定快照复核内部收据
+python -m selregress query-release \
+  --snapshot fixtures/query_privacy/detail-2026-02.html --contract independent_card \
+  --out var/query-receipt.json --public-out var/query-public.json
+python -m selregress query-verify \
+  --snapshot fixtures/query_privacy/detail-2026-02.html \
+  --receipt var/query-receipt.json --contract independent_card
+```
+
+内部收据绑定源 HTML 的 SHA-256、合同、可能世界证书与搜索证书，并带 `internal_only=true`、
+`publishable=false`。`public_release_artifact` 只导出获准卡及其成员和计数：被拒卡的计数、
+内部世界见证、源 HTML 摘要与内部收据摘要都不会出现在公开物里，避免对少量未发布计数做字典猜测。
+两份合同对同一快照的收据不能互换，复核时会重新执行合同并比对决定、证书与效用。
+
 ## 目录结构
 
 ```text
@@ -122,6 +164,7 @@ configs/
   demo.yaml             演示配置
 fixtures/
   snapshots/            两站点、六个版本的本地 HTML 快照
+  query_privacy/        全虚构的聚合查询卡快照（发布审查演示）
   expected/             演示期望摘要
   bad/                  畸形配方、畸形/空快照测试素材
 tests/                  pytest 测试与 golden 数据
@@ -146,7 +189,7 @@ python -m selregress serve --config configs/demo.yaml --port 5000
 pytest -q
 ```
 
-测试覆盖配方校验、路径边界、快照解析与指纹、字段提取与类型转换、全部诊断标记、基线差异、`pass/warn/fail` 与 `--fail-on-warn`、候选建议确定性、台账事务与历史保留、报告排序与自包含性、Flask 只读约束与 CLI demo。测试不依赖网络、真实域名或随机结果。至少三个 golden 测试校验固定时间下的完整报告指纹与关键摘要。
+测试覆盖配方校验、路径边界、快照解析与指纹、字段提取与类型转换、全部诊断标记、基线差异、`pass/warn/fail` 与 `--fail-on-warn`、候选建议确定性、台账事务与历史保留、报告排序与自包含性、Flask 只读约束与 CLI demo，以及两份聚合查询发布合同（单卡安全、联合泄露、0/1 可行性、并列裁决、快照更正与收据复用）。测试不依赖网络、真实域名或随机结果。至少三个 golden 测试校验固定时间下的完整报告指纹与关键摘要。
 
 ## 已知限制与不实现清单
 

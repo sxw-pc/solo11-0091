@@ -7,7 +7,7 @@ import json
 import os
 import re
 from datetime import datetime, timezone
-from pathlib import Path
+from pathlib import Path, PureWindowsPath
 from typing import Any
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
@@ -34,6 +34,10 @@ class InputError(SelregressError):
 def resolve_under_root(raw: str | Path, root: Path, label: str = "path") -> Path:
     """解析路径并拒绝逃出项目根目录的输入。"""
     root = root.resolve()
+    # A Windows drive or UNC path is never a relative child of ``root``, even
+    # on POSIX where ``Path`` would otherwise treat "C:/x" as a relative name.
+    if PureWindowsPath(str(raw)).drive:
+        raise InputError("PATH_OUTSIDE_ROOT", f"{label} 超出项目根目录: {raw}")
     candidate = Path(raw)
     if not candidate.is_absolute():
         candidate = root / candidate
