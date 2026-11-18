@@ -48,3 +48,32 @@ def test_forced_marker_fixture_has_valid_positive_witness() -> None:
     assert candidate["valid"] is True
     assert candidate["contains_marker"] is True
     assert evidence["guaranteed_marker_decision"] is None
+
+
+def test_candidate_overuse_or_underuse_is_invalid() -> None:
+    evidence = inspect_barcode_snapshot(FIXTURE / "detail-2026-01.html")
+    # 长度与锚点正确，但多用 AC/CA、漏用 AG/GA
+    over = preview_candidate_assembly(evidence, "ACACA")
+    assert over["valid"] is False
+    assert over["contains_marker"] is None
+    # 漏用片段导致长度不足
+    assert preview_candidate_assembly(evidence, "ACAG")["valid"] is False
+    # 多用片段导致长度超限
+    assert preview_candidate_assembly(evidence, "ACAGAA")["valid"] is False
+
+
+def test_candidate_with_illegal_character_is_invalid() -> None:
+    evidence = inspect_barcode_snapshot(FIXTURE / "detail-2026-01.html")
+    illegal = preview_candidate_assembly(evidence, "AXAGA")
+    assert illegal["valid"] is False
+    assert illegal["contains_marker"] is None
+    assert illegal["internal_preview_only"] is True
+    assert illegal["publishable"] is False
+
+
+def test_illegal_marker_character_in_snapshot_rejected(tmp_path: Path) -> None:
+    text = (FIXTURE / "detail-2026-01.html").read_text(encoding="utf-8")
+    file = tmp_path / "detail-2026-01.html"
+    file.write_text(text.replace('data-marker="CAG"', 'data-marker="C1G"'), encoding="utf-8")
+    with pytest.raises(BarcodeEvidenceError, match="contract invalid"):
+        inspect_barcode_snapshot(file, root=tmp_path)
