@@ -1,0 +1,14 @@
+{
+  "snapshot": "fixtures/table_contract/money-grid.html",
+  "table_selector": "table.money-grid",
+  "group_selector": "th.group",
+  "item_selector": "td.item",
+  "amount_selector": "td.amount",
+  "contracts": ["carry_rowspan", "explicit_only"],
+  "expected_top_level_rows": 2,
+  "fields": {
+    "group": {"type": "string"},
+    "item": {"type": "string"},
+    "amount": {"type": "decimal", "normalize": ["trim", "strip_thousands"]}
+  }
+}

@@ -54,6 +54,18 @@ pytest -q
 
 `demo` 使用仓库自带 fixture，固定时间 `2024-03-01T00:00:00Z`，因此报告内容可复现。演示数据刻意包含选择器失效、多匹配、类型失败、跨版本漂移与基线变化，因此运行结论为 `warn`，CLI 退出码为 **2**；`make demo` 接受这一预期告警并返回成功。要验证失败分支，可修改临时配置或将 `--fail-on-warn` 打开。
 
+表格合同（仅处理本地有界 HTML）：
+
+```bash
+# 只核对快照与全局字段命中，明确不产出记录（records=null）
+python -m selregress table-evidence --manifest fixtures/table_contract/manifest.json
+# 按外层表真实行结构关联批次/项目/金额，并按清单声明的合同决定行归属
+python -m selregress table-records --manifest fixtures/table_contract/manifest.json
+```
+
+`table-records` 不按全局字段数组位置拼记录：嵌套注释表与表头不会发布；`carry_rowspan` 接受源表 rowspan 声明的批次继承，`explicit_only` 只发布本行自带批次单元格的记录，缺失时保留行级来源证据并拒发。两份合同在同一快照上独立计算，HTML、合同或选择器变更会随证据重算，行数与清单不一致则直接拒发。
+
+
 安装依赖（离线环境使用本地 wheel 源）：
 
 ```bash

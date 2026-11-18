@@ -44,6 +44,10 @@ def build_parser() -> argparse.ArgumentParser:
     ledger.add_argument("--db", default=None)
     table = sub.add_parser("table-evidence", help="核对本地表格合同输入，不生成记录")
     table.add_argument("--manifest", default="fixtures/table_contract/manifest.json")
+    records = sub.add_parser(
+        "table-records", help="按声明合同把外层表格明细行关联为结构化记录"
+    )
+    records.add_argument("--manifest", default="fixtures/table_contract/manifest.json")
     return parser
 
 
@@ -114,6 +118,11 @@ def main(argv: Sequence[str] | None = None) -> int:
         if args.command == "table-evidence":
             from .table_evidence import inspect_table_contract
             _print_json(inspect_table_contract(args.manifest))
+            return 0
+        if args.command == "table-records":
+            from .table_records import render_table_records
+            sys.stdout.write(render_table_records(args.manifest))
+            sys.stdout.flush()
             return 0
         raise InputError("CLI_ARGUMENT", f"未知命令: {args.command}")
     except InputError as exc:

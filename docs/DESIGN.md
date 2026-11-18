@@ -15,6 +15,8 @@
 | `snapshot_reader.py` | 文件名解析、SHA-256、HTML 解析、空/畸形输入告警 |
 | `matcher.py` | 选择器命中、候选回退、多候选一致性判断 |
 | `extractor.py` | 文本/属性/链接/图片/HTML 取值、归一化、类型转换 |
+| `table_evidence.py` | 表格合同输入的有界核对，只给全局命中证据，明确不产出记录 |
+| `table_records.py` | 外层表格明细行关联、rowspan 网格、双合同行归属与拒发证据 |
 | `diagnostics.py` | 字段诊断、稳定性评分、跨版本漂移 |
 | `suggest.py` | 只读 DOM 归因、候选选择器建议（最多 5 条） |
 | `baseline.py` | 基线加载、当前最新版本对比、差异级别 |
@@ -57,6 +59,17 @@ configs/demo.yaml
 - 运行摘要同时记录命中率（有值字段 / 应采字段）、空值率、无命中、多匹配、类型失败、歧义与漂移字段计数。
 - 运行状态：任一 `fail` → `fail`；否则任一 `warn` → `warn`；否则 `pass`。
 - 未启用 `--fail-on-warn`：`pass=0`、`warn=2`、`fail=1`；启用后 `warn` 也返回 `1`。输入错误统一 `3`。
+
+## 4a. 表格结构化记录（table-records）
+
+`table_evidence` 只核对输入并保留 `records=null`；`table_records` 在同一套 FieldSpec/matcher/extractor 语义之上，把外层表格同一明细行的批次、项目、金额关联为一条记录：
+
+- 行关联以**外层表真实行结构**为准，不按三个全局字段数组的位置拼接；嵌套 `table` 的行与单元格、`thead` 表头行永不作为业务明细发布。
+- 含嵌套表的外层单元格在取值前深拷贝并剥离嵌套 `table`，剥离动作记录到 `source_cells.nested_table_stripped`；注释表文本（如 Z/999）不进入外层字段取值。
+- `build_row_grid` 按 HTML rowspan/colspan 语义铺网格；rowspan 越过实际表尾不虚构行，只在 `grid_issues` 标注 `rowspan_past_table_end`。
+- 两份消费者合同在同一快照上**独立计算**：`carry_rowspan` 只接受源表 rowspan 显式覆盖的批次继承（继承证据带 `inherited_from_row`）；`explicit_only` 要求批次单元格由本行自己书写，缺失时标 `missing_explicit_group` 并保留行级来源证据。合同之间不共享继承结论。
+- 单字段 `no_match`/`empty`/`type_error`/`multi_match` 只拒绝所在行，不影响其他有效行；拒绝行与发布行都带稳定 `record_id`、原快照 SHA、外层行位置、字段来源与转换状态。
+- 输入身份由快照字节 SHA-256 与清单指纹（含选择器、合同、字段配置的规范化摘要）固定；HTML、合同或选择器变更都会改变证据，行数与清单声明不一致时直接拒发，不沿用旧记录。
 
 ## 5. SQLite 表结构
 

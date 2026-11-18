@@ -1,0 +1,14 @@
+{
+  "snapshot": "fixtures/table_contract/edge-grid.html",
+  "table_selector": "table.edge-grid",
+  "group_selector": "th.group",
+  "item_selector": "td.item",
+  "amount_selector": "td.amount",
+  "contracts": ["carry_rowspan", "explicit_only"],
+  "expected_top_level_rows": 5,
+  "fields": {
+    "group": {"type": "string"},
+    "item": {"type": "string"},
+    "amount": {"type": "integer"}
+  }
+}
